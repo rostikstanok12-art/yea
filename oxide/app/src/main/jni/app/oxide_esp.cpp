@@ -3,6 +3,7 @@
 #include "oxide_offsets_bluestacks.h"
 #include "bluestacks_helper.h"
 #include "il2cpp_parser.h"
+#include "pure_external.h"
 #include "Vector3.hpp"
 #include <android/log.h>
 #include <cmath>
@@ -16,25 +17,15 @@ void OxideESP::Init(int pid) {
     mem.Init(pid);
     il2cppBase = mem.get_il2cpp_base();
     unityBase = mem.get_unity_base();
-    LOGD("BlueStacks il2cpp base: %lx unity base: %lx pid: %d", il2cppBase, unityBase, pid);
+    LOGD("PureExternal no-inject - il2cpp base: %lx unity base: %lx pid: %d", il2cppBase, unityBase, pid);
     initialized = (il2cppBase != 0);
 
-    // BlueStacks extra: ensure permissive
     BlueStacksHelper::ensurePermissive();
     
-    // Try to read dump file from helper (no Frida method)
+    // Check for helper file (if user used inject before, we can still use it)
     FILE* f = fopen("/data/local/tmp/oxide_dump.txt", "r");
     if (f) {
-        char line[256];
-        while (fgets(line, sizeof(line), f)) {
-            LOGD("dump: %s", line);
-            // Parse clientPlayerList
-            if (strstr(line, "clientPlayerList=")) {
-                uintptr_t addr = 0;
-                sscanf(line, "clientPlayerList=%lx", &addr);
-                LOGD("Found clientPlayerList from helper file: %lx", addr);
-            }
-        }
+        LOGD("Helper file exists, but we will try pure external first for no-inject mode");
         fclose(f);
     }
 }
@@ -60,16 +51,12 @@ std::string OxideESP::getPlayerName(uintptr_t playerAddr) {
 }
 
 bool OxideESP::getViewMatrix(float* outMatrix) {
-    // BlueStacks: try to get view matrix from helper or from Camera
-    // For now, try to read from /data/local/tmp/oxide_matrix.bin if helper wrote it
     FILE* f = fopen("/data/local/tmp/oxide_matrix.bin", "rb");
     if (f) {
         fread(outMatrix, sizeof(float), 16, f);
         fclose(f);
         return true;
     }
-    // Fallback: try to find Camera.main view matrix via scanning
-    // TODO: implement proper matrix reading for BlueStacks OpenGL
     return false;
 }
 
@@ -84,8 +71,18 @@ std::vector<uintptr_t> OxideESP::getPlayerList(bool activeOnly) {
     std::vector<uintptr_t> result;
     if (!il2cppBase) return result;
 
-    // Method 1: No Frida - read from helper dump file (injected SO)
-    // This is the primary method for BlueStacks without Frida
+    // PRIORITY 1: Pure external NO INJECT - no helper, no frida, only process_vm_readv
+    // This is what user asked: "можно без inject?"
+    {
+        PureExternal pure(&mem);
+        auto players = pure.getPlayersPureExternal();
+        if (!players.empty()) {
+            LOGD("NO INJECT: Got %zu players via PureExternal", players.size());
+            return players;
+        }
+    }
+
+    // PRIORITY 2: Helper file method (if user previously injected, still works without frida)
     FILE* f = fopen("/data/local/tmp/oxide_addrs.bin", "rb");
     if (f) {
         uintptr_t clientList = 0, activeList = 0, sleepingList = 0;
@@ -106,26 +103,17 @@ std::vector<uintptr_t> OxideESP::getPlayerList(bool activeOnly) {
         }
     }
 
-    // Method 2: Pure external parser - no helper, no Frida
-    // Uses Il2CppParser to brute force find PlayerManager class
+    // PRIORITY 3: Il2CppParser fallback
     {
         Il2CppParser parser(&mem);
         auto players = parser.getPlayersNoFrida();
         if (!players.empty()) {
-            LOGD("Got %zu players from pure external parser", players.size());
+            LOGD("Got %zu players from Il2CppParser", players.size());
             return players;
         }
     }
 
-    // Method 3: Scan heap for PlayerManager-like objects (fallback for BlueStacks)
-    // This works without any il2cpp parsing, just heuristic
-    // Scan /proc/pid/maps for rw regions and look for valid PlayerManager objects
-    // For BlueStacks with root, we can read /proc/pid/mem
-    // Implementation: iterate maps, read each rw region, check if at offset 0x1C8 there's a valid Vector3
-    // and at 0xC8 there's a valid pointer
-
-    // For now, return empty if all methods fail - will be filled when helper is injected
-    LOGD("No players found, need helper injection");
+    LOGD("No players found - pure external failed, need to ensure root + permissive");
     return result;
 }
 
@@ -151,7 +139,6 @@ void OxideESP::Update() {
         players.push_back(p);
     }
 
-    // Update camera pos
     camera.position = getCameraPos();
 }
 

@@ -137,3 +137,22 @@ frida -U -f com.oxide.survival -l frida_oxide_esp.js --no-pause
 - Могу добавить скелетон ESP через чтение Animator bones
 
 Скажи что делаем дальше - дописываем W2S, парсер листа, или сразу собираем тестовый APK.
+
+## Update: No Inject Mode (BlueStacks)
+
+Добавлен чистый no-inject режим без Frida и без helper SO:
+
+- `pure_external.h` - сканит libil2cpp.so .data на s_TypeInfo[9223] -> PlayerManager class -> static_fields -> clientPlayerList
+- Fallback brute force скан хипа на List объекты
+- Работает только с `adb root` + `setenforce 0`, как в BlueStacks
+- В `oxide_esp.cpp` приоритет: PureExternal -> helper file -> Il2CppParser
+
+См. `PURE_NO_INJECT.md` для деталей.
+
+Для запуска без инжекта вообще:
+```bat
+adb -s 127.0.0.1:5555 root
+adb -s 127.0.0.1:5555 shell setenforce 0
+adb -s 127.0.0.1:5555 install app-debug.apk
+# запустить Oxide, затем ESP - все
+```
