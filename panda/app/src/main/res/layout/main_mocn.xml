@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+	xmlns:android="http://schemas.android.com/apk/res/android"
+	android:layout_width="match_parent"
+	android:layout_height="match_parent">
+
+	<LinearLayout
+		android:padding="30dp"
+		android:gravity="center"
+		android:orientation="vertical"
+		android:background="#FFFFFFFF"
+		android:layout_width="match_parent"
+		android:layout_height="match_parent">
+
+		<TextView
+			android:textSize="15sp"
+			android:textStyle="bold"
+			android:gravity="center"
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:id="@+id/Main_Hello"
+			android:text="熊猫插件GT:@DevloperCode"/>
+
+		<TextView
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:text="Login"
+			android:layout_marginTop="19dp"
+			android:layout_marginRight="126dp"/>
+
+		<LinearLayout
+			android:orientation="vertical"
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:background="@drawable/box_input1"
+			android:padding="25dp"
+			android:layout_marginTop="2dp">
+
+			<Button
+				android:textSize="10sp"
+				android:textStyle="bold"
+				android:textColor="#FFFFFFFF"
+				android:layout_width="240dp"
+				android:layout_height="35dp"
+				android:text="Start"
+				android:id="@+id/kaiqi"
+				android:background="@drawable/box_save"
+				android:visibility="visible"/>
+
+		</LinearLayout>
+
+		<TextView
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:text="Other"
+			android:layout_marginRight="125dp"
+			android:layout_marginTop="17dp"/>
+
+		<LinearLayout
+			android:orientation="vertical"
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:padding="25dp"
+			android:background="@drawable/box_input1"
+			android:layout_marginTop="2dp">
+
+			<Button
+				android:textSize="10sp"
+				android:textStyle="bold"
+				android:textColor="#FFFFFFFF"
+				android:layout_gravity="center"
+				android:layout_width="240dp"
+				android:layout_height="35dp"
+				android:text="加入我们"
+				android:id="@+id/群聊"
+				android:layout_marginTop="10dp"
+				android:background="@drawable/box_save"/>
+
+			<Button
+				android:textSize="10sp"
+				android:textStyle="bold"
+				android:textColor="#FFFFFFFF"
+				android:layout_gravity="center"
+				android:layout_width="240dp"
+				android:layout_height="35dp"
+				android:text="官方云盘"
+				android:id="@+id/网盘"
+				android:layout_marginTop="10dp"
+				android:background="@drawable/box_save"/>
+
+			<Button
+				android:textSize="10sp"
+				android:textStyle="bold"
+				android:textColor="#FFFFFFFF"
+				android:layout_gravity="center"
+				android:layout_width="240dp"
+				android:layout_height="35dp"
+				android:layout_marginTop="10dp"
+				android:text="重置模式"
+				android:id="@+id/reset_im"
+				android:background="@drawable/box_save"/>
+
+		</LinearLayout>
+
+	</LinearLayout>
+
+</LinearLayout>
+

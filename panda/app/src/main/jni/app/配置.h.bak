@@ -1,0 +1,147 @@
+
+#include <unistd.h>
+#include <stdlib.h>
+#include <fcntl.h>
+#include <dirent.h>
+#include <pthread.h>
+#include <fstream>
+#include <string.h>
+#include <time.h>
+#include <malloc.h>
+#include <android/log.h>
+#include <thread> //C++
+#include <EGL/egl.h>
+#include <EGL/eglext.h>
+#include <GLES/gl.h>
+#include <GLES3/gl3platform.h>
+#include <GLES3/gl3ext.h>
+#include <GLES3/gl32.h>
+#include <android/native_window_jni.h>
+#include <iostream>
+#include <fstream>
+#include <ctime>
+#include <map>
+#include "imgui.h"
+#include "imgui_internal.h"
+#include "imgui_impl_opengl3.h"
+#include "imgui_impl_android.h"
+#include "imgui_Input_android.h"
+#include "MyCustom/imgui_Custom.h"
+#include "Icon.h"
+#pragma once
+
+extern char password[30]; // 声明为外部变量
+//touch
+    ImVec2 OScreenTouch(ImVec2 slotPos,float x_p,float y_p);
+    void MyTouch();
+    void StartTouch();
+
+extern ImGuiWindow *Window;
+extern ImGuiWindow *Window2;
+extern bool g_Initialized;
+extern ANativeWindow *window_sv;
+extern EGLDisplay g_EglDisplay;
+extern EGLSurface g_EglSurface;
+extern EGLContext g_EglContext;
+extern void initGui();
+extern void initializeEGLContext();
+extern bool Android_LoadSystemFont();
+extern void ImGuiMainWinStart(); //Start
+extern void ImGuiMainMenuWind(); //UI
+extern void ImGuiMainWinEnded();//end
+extern void get_middle(char *text, const char *str_start, const char *str_end, char *ret, size_t ret_size);
+extern int _ScreenX, _ScreenY;
+extern int abs_ScreenX, abs_ScreenY;
+struct 开关 {
+    //绘制功能
+	bool 绘制;
+	bool 方框;
+	bool 射线;
+	bool 距离;
+	bool 名字;  
+    bool 阵营;  
+	bool 血量; 
+	bool 雷达; 
+	//自瞄功能
+	bool 自瞄;
+	bool 自瞄圈;
+	bool 高跳;
+	bool 人 = true;
+	bool 熊;
+	bool 鹿;
+	bool 猪;
+	bool 夜市开关;
+	bool 最近;
+	bool 开镜;
+	bool 自身开关;
+	bool 黑色天空;
+	bool 房屋透视;
+	
+};
+struct 配置 {
+	float 自瞄范围 = 290;
+	float 绘制最大距离 = 250.f;
+	float 绘制最小距离;
+	float 雷达X = 300;
+    float 雷达Y = 500;
+    float 自瞄位置;
+    float 自瞄距离 = 50.f;
+    float 夜市;
+    float 自身调节;
+    float 绘制便利 = 13500;
+    
+    0.237
+};
+
+
+
+struct D2DVector
+{
+	float X;
+	float Y;
+	D2DVector() {
+        this->X = 0;
+        this->Y = 0;
+    }
+    D2DVector(float x, float y) {
+        this->X = x;
+        this->Y = y;
+    }
+}; 
+
+struct D3DVector
+{
+	float X;
+	float Y;
+	float Z;
+	D3DVector() {
+        this->X = 0;
+        this->Y = 0;
+        this->Z = 0;
+    }
+    D3DVector(float x, float y,float z) {
+        this->X = x;
+        this->Y = y;
+        this->Z = z;
+    }
+};
+
+struct D4DVector
+{
+	float X;
+	float Y;
+	float Z;
+	float W;
+	D4DVector() {
+        this->X = 0;
+        this->Y = 0;
+        this->Z = 0;
+        this->W = 0;
+    }
+    D4DVector(float x, float y,float z,float w) {
+        this->X = x;
+        this->Y = y;
+        this->Z = z;
+        this->W = w;
+    }
+};

@@ -1,0 +1,818 @@
+package com.KITE;
+
+import android.app.Activity;
+import android.app.AlertDialog;
+import android.content.Context;
+import android.content.DialogInterface;
+import android.content.Intent;
+import android.graphics.Color;
+import android.net.Uri;
+import android.os.Build;
+import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
+import android.os.Message;
+import android.os.RemoteException;
+import android.provider.Settings;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.ViewGroup;
+import android.view.Window;
+import android.view.WindowManager;
+import android.widget.BaseAdapter;
+import android.widget.ImageView;
+import android.widget.ListView;
+import android.widget.ProgressBar;
+import android.widget.TextView;
+import android.widget.VideoView;
+import android.widget.EditText;
+import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import android.widget.MediaController;
+
+import android.graphics.drawable.GradientDrawable;
+import android.widget.LinearLayout;
+import android.widget.LinearLayout.LayoutParams;
+import android.widget.TextView;
+import android.widget.Button;
+import android.view.Gravity;
+
+import com.topjohnwu.superuser.ipc.RootService;
+import com.KITE.IPCCond.*;
+import com.KITE.ToolClass.*;
+import android.Manifest;
+import android.content.pm.PackageManager;
+import java.io.File;
+import java.io.InputStreamReader;
+import java.io.BufferedReader;
+import java.io.FileInputStream;
+
+import java.io.IOException;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.io.FileInputStream;
+import android.content.pm.PackageManager;
+import android.content.Context;
+import android.content.Intent;
+import android.widget.Toast;
+import java.io.InputStream;
+import java.io.FileOutputStream;
+import android.util.Log;
+import java.io.DataOutputStream;
+import java.security.MessageDigest;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.io.OutputStream;
+import android.graphics.Typeface;
+import android.graphics.BitmapFactory;
+import android.graphics.Bitmap;
+import org.json.JSONObject;
+import java.util.GregorianCalendar;
+import org.json.JSONException;
+import android.icu.text.SimpleDateFormat;
+import java.util.UUID;
+public class MainActivity extends Activity {
+	
+	static String wy_url = "wy.llua.cn";//API接口
+	static String WY_APPID = "77425"; // 项目id
+	static String WY_APPKEY = "fBIXJ8IoxV4D9d1Q"; //项目key
+	static String WY_RC4KEY = "BafXNBJ4j7PDt5W";//RC4密钥
+	static LinearLayout linearLayouts;
+	static  AlertDialog.Builder dialogs,dialogs1;
+    static AlertDialog alertDialogs,alertDialogs1;
+    public Intent intent;   
+    static String 当前版本号="1.4";
+	static boolean 登录判断=false;
+	private String 卡密;	
+	private String 卡密内容;
+	private static boolean init_win = false;
+    private static Activity m_activity;
+	private static ListView listView;
+    private static List<Map<String, Object>> list;
+    private static MyAdapter adapter;
+    private static ProgressBar progressBar;
+	private static TextView prog_text,倒计时;
+    private static View 窗口;
+	private static AlertDialog dialog;
+	private static int time = 1;
+	public static Context getContext;
+
+
+    private static AlertDialog alertDialogss;
+    public static boolean app_init_mode = false;
+    public static boolean app_Operation_mode_root = false;
+   private static EditText 读;
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        w88cc7ef909edd6b2b145e6c06b2fc573.Start(this);
+super.onCreate(savedInstanceState);
+		this.requestWindowFeature(Window.FEATURE_NO_TITLE);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            getWindow().getDecorView().setSystemUiVisibility( View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR);
+        }
+        this.getWindow().setStatusBarColor(Color.parseColor("#E1F0F0F0"));
+        this.requestPermission();
+		this.储存权限(); 
+			
+       m_activity = this;
+		this.getContext = this;
+        SelectModeBox(this);
+	  
+		}
+	/*读取文件里的内容*/
+	public static String 读取文件(String 路径) {
+		String str="";
+		try {
+			File urlFile=new File(路径);
+			InputStreamReader isr=new InputStreamReader(new FileInputStream(urlFile), "UTF-8");
+			BufferedReader br=new BufferedReader(isr);
+			String mimeTypeLine=null;
+			while ((mimeTypeLine = br.readLine()) != null) {
+				str = str + mimeTypeLine;
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return str;
+	}
+	
+	
+	
+	public void 储存权限(){
+        boolean isGranted = true;
+        if (android.os.Build.VERSION.SDK_INT >= 23) {
+            if (this.checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+                isGranted = false;
+            }
+            if (this.checkSelfPermission(Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+                isGranted = false;
+            }
+            if (!isGranted) {
+                this.requestPermissions(
+                    new String[]{Manifest.permission.ACCESS_COARSE_LOCATION, Manifest.permission
+                        .ACCESS_FINE_LOCATION,
+                        Manifest.permission.READ_EXTERNAL_STORAGE,
+                        Manifest.permission.WRITE_EXTERNAL_STORAGE},
+                    102);
+            }
+		}
+	}
+	private void 频道Main() {
+		linearLayouts = new LinearLayout(MainActivity.this);
+		linearLayouts.setOrientation(1);
+		linearLayouts.setLayoutParams(new LinearLayout.LayoutParams(-1, -1));
+		linearLayouts.setPadding(40, 40, 40, 40);              
+		dialogs = new AlertDialog.Builder(MainActivity.this, 5);
+		final TextView texties = new TextView(MainActivity.this);
+		texties.setTextColor(0xFF000000);
+		texties.setLayoutParams(new LinearLayout.LayoutParams(-2, -2));
+		texties.setText("加入频道");
+		texties.setTextSize(19.0f);
+		texties.setGravity(5);
+		Button Butts1 = new Button(MainActivity.this);
+		Butts1.setText("TG频道");
+		Butts1.setTextSize(10.0f);
+		Butts1.setTextColor(0xFFFFFFFF);
+		Butts1.setBackgroundColor(0xFF00C0FF);	
+		Butts1.setLayoutParams(new LinearLayout.LayoutParams(-1, -1));
+		LinearLayout.LayoutParams 间距1= (LinearLayout.LayoutParams) Butts1.getLayoutParams();
+		Butts1.setOnClickListener(new View.OnClickListener() {
+				@Override 
+				public void onClick(View view) {
+					alertDialogs.dismiss();
+					Uri uri = Uri.parse("https://t.me/MENU54188");
+					Intent intent = new Intent(Intent.ACTION_VIEW, uri);
+					MainActivity.this.startActivity(intent);
+				}});
+		间距1.topMargin = 100;		
+		Button Butts = new Button(MainActivity.this);
+		Butts.setText("熊猫频道");
+		Butts.setTextSize(10.0f);
+		Butts.setTextColor(0xFFFFFFFF);
+		Butts.setBackgroundColor(0xFF00C0FF);
+		Butts.setLayoutParams(new LinearLayout.LayoutParams(-1, -1));
+		LinearLayout.LayoutParams 间距2= (LinearLayout.LayoutParams) Butts.getLayoutParams();
+		Butts.setOnClickListener(new View.OnClickListener() {
+				@Override 
+				public void onClick(View view) {
+					alertDialogs.dismiss();
+					Uri uri = Uri.parse("https://pt8.app/kitetool");
+					Intent intent = new Intent(Intent.ACTION_VIEW, uri);
+					MainActivity.this.startActivity(intent);
+				}});	
+		间距2.topMargin = 25;	
+		
+		Button Butts3 = new Button(MainActivity.this);
+		Butts3.setText("熊猫官方QQ群聊");
+		Butts3.setTextSize(10.0f);
+		Butts3.setTextColor(0xFFFFFFFF);
+		Butts3.setBackgroundColor(0xFF00C0FF);
+		Butts3.setLayoutParams(new LinearLayout.LayoutParams(-1, -1));
+		LinearLayout.LayoutParams 间距4= (LinearLayout.LayoutParams) Butts3.getLayoutParams();
+		Butts3.setOnClickListener(new View.OnClickListener() {
+				@Override 
+				public void onClick(View view) {
+					alertDialogs.dismiss();
+					Uri uri = Uri.parse("http://qm.qq.com/cgi-bin/qm/qr?_wv=1027&k=EGAJDHdXiE6X5OcpIMSphcrXtQdEaonx&authKey=kukoD3xNB9OSomnGJFkfAQPMxh1QQm%2FyIwLbbAx1EvjMbgjsnXieCoQYzw32zNXS&noverify=0&group_code=974179343");
+					Intent intent = new Intent(Intent.ACTION_VIEW, uri);
+					MainActivity.this.startActivity(intent);
+				}});	
+		间距4.topMargin = 30;	
+		
+		Button Butts2 = new Button(MainActivity.this);
+		Butts2.setText("取消");
+		Butts2.setTextSize(10.0f);
+		Butts2.setTextColor(0xFFFFFFFF);
+		Butts2.setBackgroundColor(0xFF00C0FF);
+		Butts2.setLayoutParams(new LinearLayout.LayoutParams(-1, -1));
+		LinearLayout.LayoutParams 间距3= (LinearLayout.LayoutParams) Butts2.getLayoutParams();
+		Butts2.setOnClickListener(new View.OnClickListener() {
+				@Override 
+				public void onClick(View view) {
+					alertDialogs.dismiss();
+				}});	
+		间距3.topMargin = 55;				
+		linearLayouts.addView(texties);
+		linearLayouts.addView(Butts1);
+		linearLayouts.addView(Butts);
+		linearLayouts.addView(Butts3);
+		linearLayouts.addView(Butts2);
+		dialogs.setCancelable(false);
+		dialogs.setView(linearLayouts);
+		alertDialogs = dialogs.show();           	   
+	}
+	private void initMain() {
+        窗口.findViewById(R.id.go_app).setVisibility(View.GONE);
+        loadDeploy(new Object[][]{{"获取ROOT权限", (new Runnable() {
+                               @Override
+                               public void run() {
+                                   if (app_Operation_mode_root == true && !Util.isRoot()) {
+                                       new Handler(Looper.getMainLooper()).post(new Runnable() {
+                                               @Override
+                                               public void run() {
+                                                   AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
+                                                   builder.setTitle("提示");
+                                                   builder.setMessage("无法获取ROOT权限，请检查您的设备是否已ROOT？");
+                                                   builder.setCancelable(false);
+                                                   builder.setPositiveButton("确定", new DialogInterface.OnClickListener(){
+                                                           @Override
+                                                           public void onClick(DialogInterface dialog, int which) {
+                                                               dialog.dismiss();
+                                                               android.os.Process.killProcess(android.os.Process.myPid());
+                                                               System.exit(0);
+                                                           }
+                                                       });
+                                                   AlertDialog d = builder.create();
+                                                   int type = WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY;
+                                                   d.getWindow().setType(type);
+                                                   d.show();
+                                               }
+                                           });
+									   try {
+										   Thread.sleep(999999999);
+									   } catch (InterruptedException e) {
+										   e.printStackTrace();
+									   }
+                                   }
+
+                               }
+                           })}, {"获取悬浮窗权限", (new Runnable(){
+                               @Override
+                               public void run() {
+                                   for (int i = 0; i < 5; i++) {
+                                       if (!Settings.canDrawOverlays(MainActivity.this)) {
+                                           Util.runShell("appops set --uid " + MainActivity.this.getPackageName() + " android:system_alert_window allow", true);
+                                           try {
+                                               Thread.sleep(100);
+                                           } catch (InterruptedException e) {
+                                               e.printStackTrace();
+                                           }
+                                       } else {
+                                           break;
+                                       }
+                                   }
+                                   if (!Settings.canDrawOverlays(MainActivity.this)) {
+                                       Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                                                                  Uri.parse("package:" + getPackageName()));
+                                       startActivityForResult(intent, 4444);
+                                   }
+                                   while (!Settings.canDrawOverlays(MainActivity.this)) {
+                                       try {
+                                           Thread.sleep(500);
+                                       } catch (InterruptedException e) {
+                                           e.printStackTrace();
+                                       }
+                                   }
+                               }
+
+                           })
+                       },{"连接服务", (new Runnable(){
+                               @Override
+                               public void run() {
+								   while (!IPCService.isConnect() && app_Operation_mode_root == true) {
+                                       try {
+                                           Thread.sleep(500);
+                                       } catch (InterruptedException e) {
+                                           e.printStackTrace();
+                                       }
+                                   }
+								   runOnUiThread(new Runnable() {
+                                           @Override
+                                           public void run() {
+											   handler.sendEmptyMessageDelayed(0,1000);
+                                               窗口.findViewById(R.id.go_app).setVisibility(View.VISIBLE);
+                                           }
+                                       });
+							   }
+						   })
+					   },
+				   });
+	}
+	 private void loadDeploy(final Object[][] funs) {
+        new Thread(new Runnable() {
+                @Override
+                public void run() {
+					progressBar.setMax(funs.length);
+					for (int i = 0; i < funs.length; i++) {
+						final int finalI = i;
+						final HashMap<String, Object> map = new HashMap<>();
+						runOnUiThread(new Runnable() {
+								@Override
+								public void run() {
+									prog_text.setText(String.format("(%d/%d)", finalI + 1, funs.length));
+									map.put("msg", funs[finalI][0].toString());
+									map.put("success", false);
+									list.add(map);
+									adapter.notifyDataSetChanged();
+								}
+							});
+
+						((Runnable) funs[i][1]).run();
+
+						runOnUiThread(new Runnable() {
+								@Override
+								public void run() {
+									map.replace("success", true);
+									adapter.notifyDataSetChanged();
+									listView.setSelection(listView.getBottom());
+									progressBar.setProgress(finalI + 1);
+								}
+							});
+					}
+				}
+			}).start();
+    }
+	
+	private Handler handler = new Handler() {
+        @Override
+        public void handleMessage(Message msg) {
+            super.handleMessage(msg);
+            time--;
+            倒计时.setText("倒计时 "+time+" 秒");
+            if (time==0){
+                dialog.dismiss();
+                handler.removeMessages(0);
+            }
+            handler.sendEmptyMessageDelayed(0,1000);
+        }
+    };
+	
+	class MyAdapter extends BaseAdapter {
+		private LayoutInflater mInflater;
+		private List<Map<String, Object>> list;
+
+		public MyAdapter(Context context, List<Map<String, Object>> list) {
+			this.mInflater = LayoutInflater.from(context);
+			this.list = list;
+		}
+
+		@Override
+		public int getCount() {
+			return list.size();
+		}
+
+		@Override
+		public Object getItem(int position) {
+			return list.get(position);
+		}
+
+		@Override
+		public long getItemId(int position) {
+			return position;
+		}
+
+		@Override
+		public View getView(int position, View convertView, ViewGroup parent) {
+			ViewHolder holder = null;
+
+			if (convertView == null) {
+				holder = new ViewHolder();
+				convertView = mInflater.inflate(R.layout.layout_main_item, null);
+				holder.msg = (TextView) convertView.findViewById(R.id.main_item_msg);
+				holder.success = (ImageView) convertView.findViewById(R.id.main_item_success);
+				holder.progressBar = (ProgressBar) convertView.findViewById(R.id.progressBar2);
+
+				convertView.setTag(holder);
+			} else {
+				holder = (ViewHolder) convertView.getTag();
+			}
+			holder.msg.setText((String) list.get(position).get("msg"));
+			boolean isSuccess = (boolean) list.get(position).get("success");
+			holder.success.setVisibility(isSuccess ? View.VISIBLE : View.GONE);
+			holder.progressBar.setVisibility(isSuccess ? View.GONE : View.VISIBLE);
+			return convertView;
+		}
+
+
+		public final class ViewHolder {
+			public TextView msg;
+			public ImageView success;
+			public ProgressBar progressBar;
+		}
+
+	}
+		
+
+
+    private void ActivityMain() {
+        if (app_Operation_mode_root) {
+            RootService.bind(new Intent(MainActivity.this, SuperMain.class), new AIDLConnection(false));
+            if (!Settings.canDrawOverlays(m_activity)) {
+                FloatTool.RunShell("appops set --uid " + m_activity.getPackageName() + " android:system_alert_window allow", true);
+            }        
+        } else {        
+    		System.loadLibrary("main");   
+    		RequestPermission();     
+        }
+
+        app_init_mode = true;
+        SPUtils.setParam(getApplicationContext(), "app_init_mode", app_init_mode);
+        SPUtils.setParam(getApplicationContext(), "app_Operation_mode_root", app_Operation_mode_root);
+
+		this.setContentView(R.layout.main_mocn);				
+		窗口 = LayoutInflater.from(this).inflate(R.layout.activity_main, null);
+		listView = 窗口.findViewById(R.id.list_start_info);
+        progressBar = 窗口.findViewById(R.id.progressBar);
+        prog_text = 窗口.findViewById(R.id.prog_text);
+		倒计时 = 窗口.findViewById(R.id.go_app);
+	
+		if (!Settings.canDrawOverlays(this)) {
+            Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:" + getPackageName()));
+            startActivityForResult(intent, 4444);
+        }
+   	更新();
+		findViewById(R.id.群聊).setOnClickListener(
+			new View.OnClickListener() {
+				// 直接开启
+				@Override    
+				public void onClick(View v) { 
+				频道Main();
+			}});		
+		findViewById(R.id.网盘).setOnClickListener(
+			new View.OnClickListener() {
+				
+				// 直接开启
+				@Override    
+				public void onClick(View v) { 
+					Uri uri = Uri.parse("https://www.123684.com/s/eiSOjv-U9uAv");
+					Intent intent = new Intent(Intent.ACTION_VIEW, uri);
+					MainActivity.this.startActivity(intent); 		
+				}});		
+		
+				
+		findViewById(R.id.kaiqi).setOnClickListener(
+			new View.OnClickListener() {
+				@Override
+				public void onClick(View v) {
+										try {//
+											if (!init_win) {
+												init_win = true;
+												if (app_Operation_mode_root) {
+													IPCService.GetIPC().setPid(android.os.Process.myPid());
+													IPCService.GetIPC().setUUid(Util.getAndroidID());
+
+												} else {
+													SuperJNI.setPid(android.os.Process.myPid());
+													SuperJNI.setUUid(Util.getAndroidID());
+
+												}
+												StartGame.showFloatWindow(MainActivity.this);	                    
+											} else {
+												if (app_Operation_mode_root) {
+												}
+											}
+										} catch (RemoteException e) {
+											e.printStackTrace();
+										}//
+												
+					
+			}			
+		  }
+		);
+		
+		final Button Reset_mode_Button = findViewById(R.id.reset_im);  //寻找	
+        Reset_mode_Button.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                SPUtils.setParam(getApplicationContext(), "app_init_mode", false);                
+				System.exit(0);
+            }
+	    });
+		
+		
+		list = new ArrayList<>();
+        adapter = new MyAdapter(this, list);
+        listView.setAdapter(adapter);
+		dialog = new AlertDialog.Builder(this).setView(窗口).setCancelable(false).create();
+        if (app_Operation_mode_root) {
+     		dialog.show();
+            initMain();
+        }
+    }
+
+	void 解绑(final String 卡密) {
+
+        new Thread(new Runnable() {         
+                @Override
+                public void run() {
+                    String sign = wy_url + "/api/?id=kmdismiss"; // 卡密解绑
+                    String content;
+                    String random;
+                    String uuid;                   
+                    uuid = Tools.获取机器码(MainActivity.this);
+                    random = UUID.randomUUID().toString().replace("-", "") + WY_APPKEY + uuid;          
+                    Long time = System.currentTimeMillis() / 1000;
+                    String signs = Tools.encodeMD5("kami=" + 卡密 + "&markcode=" + uuid + "&t=" + time + "&" + WY_APPKEY);
+                    String body="&app=" + WY_APPID + "&kami=" + 卡密 + "&markcode=" + uuid + "&t=" + time + "&sign=" + signs;     
+                    String 提交内容=sign + body;
+                    try {
+                        String data = "data=" + RC4Util.encryRC4String(body, WY_RC4KEY, "UTF-8");
+                        content = RC4Util.decryRC4(Tools.UrlPost(提交内容 + "&app=" + WY_APPID, data + "&value=" + random), WY_RC4KEY, "UTF-8");
+                        JSONObject jsonObject = new JSONObject(content);
+                        String code=jsonObject.getString("code");//是否解绑成功
+                        String Message=jsonObject.getString("msg");
+                        if (code.equals("200")) {//解绑成功
+
+                            JSONObject json = new JSONObject(Message);                      
+                            String num=json.getString("num");
+                            Looper.prepare();
+                            Toast.makeText(MainActivity.this, "解绑成功\n当前卡密解绑次数剩余 " + num + " 次", Toast.LENGTH_LONG).show();
+                            Looper.loop();
+
+						} else {
+                            Looper.prepare();
+                            Toast.makeText(MainActivity.this, Message, Toast.LENGTH_LONG).show();
+                            Looper.loop();
+                        }
+                    } catch (JSONException e) {
+                        Looper.prepare();
+
+                        Toast.makeText(MainActivity.this, "错误/"+e, Toast.LENGTH_LONG).show();
+                        Looper.loop();
+                    } catch (Exception e) {
+                    }                                  
+                }
+            }).start();                      
+    }
+	void 更新() {
+        new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    String sign="/api/?app=" + WY_APPID + "&id=ini"; // 公告
+                    try {
+                        String content=RC4Util.decryRC4(Tools.UrlPost(wy_url + sign, ""), WY_RC4KEY, "UTF-8");
+                        JSONObject jsonObject = new JSONObject(content);
+                        String data=jsonObject.getString("msg");
+                        JSONObject json = new JSONObject(data);                     
+                        String version = json.getString("version"); //最新版本
+                        String app_update_show = json.getString("app_update_show"); //更新内容
+                        final String app_update_url = json.getString("app_update_url"); //最新地址
+                        String app_update_must = json.getString("app_update_must"); //强制更新  
+						
+						if (!version.equals(当前版本号)) {
+                            Looper.prepare();
+                            linearLayouts = new LinearLayout(MainActivity.this);
+                            linearLayouts.setOrientation(1);
+                            linearLayouts.setLayoutParams(new LinearLayout.LayoutParams(-1, -1));
+                            linearLayouts.setPadding(40, 40, 40, 40);
+                            dialogs = new AlertDialog.Builder(MainActivity.this, 5);
+
+                            final TextView texties = new TextView(MainActivity.this);
+                            texties.setTextColor(0xFF000000);
+                            texties.setLayoutParams(new LinearLayout.LayoutParams(-2, -2));
+                            texties.setText("有新版本");
+                            texties.setTextSize(19.0f);
+                            texties.setGravity(5);
+                            final TextView textVies = new TextView(MainActivity.this);
+                            textVies.setTextColor(0xFF000000);
+                            textVies.setLayoutParams(new LinearLayout.LayoutParams(-2, -2));
+                            textVies.setTextSize(12.0f);    
+                            textVies.setText("\n" + app_update_show + "\n");
+                            Button Butts = new Button(MainActivity.this);
+                            Butts.setText("立即更新");
+                            Butts.setTextSize(10.0f);
+                            Butts.setTextColor(0xFFFFFFFF);
+                            Butts.setBackgroundColor(0xFF00C0FF);
+                            Butts.setLayoutParams(new LinearLayout.LayoutParams(-1, -2));
+                            Butts.setOnClickListener(new View.OnClickListener() {
+                                    @Override 
+                                    public void onClick(View view) {
+                                        alertDialogs.dismiss();
+
+                                        Uri uri = Uri.parse(app_update_url);
+                                        Intent intent = new Intent(Intent.ACTION_VIEW, uri);
+                                        MainActivity.this.startActivity(intent);
+                                    }});
+                            linearLayouts.addView(texties);
+                            linearLayouts.addView(textVies);
+                            linearLayouts.addView(Butts);
+                            if (app_update_must.equals("y")) {
+                                dialogs.setCancelable(false);
+                            }
+                            dialogs.setView(linearLayouts);
+                            alertDialogs = dialogs.show();
+                            Looper.loop();
+                        }else{
+							公告();
+
+							Toast.makeText(MainActivity.this, "最新版!", Toast.LENGTH_LONG).show();
+						}
+                    } catch (Exception e) {
+                    }
+                }
+            }).start(); 
+    }
+	void 公告() {
+        new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    String sign="/api/?app=" + WY_APPID + "&id=notice"; // 公告
+                    try {
+                        String content=RC4Util.decryRC4(Tools.UrlPost(wy_url + sign, ""), WY_RC4KEY, "UTF-8");
+                        JSONObject jsonObject = new JSONObject(content);
+                        String data=jsonObject.getString("msg");
+                        JSONObject json = new JSONObject(data);                     
+                        String appgg=json.optString("app_gg");
+                        Looper.prepare();
+                        linearLayouts = new LinearLayout(MainActivity.this);
+                        linearLayouts.setOrientation(1);
+                        linearLayouts.setLayoutParams(new LinearLayout.LayoutParams(-1, -1));
+                        linearLayouts.setPadding(40, 40, 40, 40);              
+						dialogs = new AlertDialog.Builder(MainActivity.this, 5);
+                        final TextView texties = new TextView(MainActivity.this);
+                        texties.setTextColor(0xFF000000);
+                        texties.setLayoutParams(new LinearLayout.LayoutParams(-2, -2));
+                        texties.setText("公告");
+                        texties.setTextSize(19.0f);
+                        texties.setGravity(5);
+                        final TextView textVies = new TextView(MainActivity.this);
+                        textVies.setTextColor(0xFF000000);
+                        textVies.setLayoutParams(new LinearLayout.LayoutParams(-2, -2));
+                        textVies.setTextSize(12.0f);    
+                        textVies.setText("\n" + appgg + "\n");
+                        Button Butts = new Button(MainActivity.this);
+                        Butts.setText("确定");
+                        Butts.setTextSize(10.0f);
+                        Butts.setTextColor(0xFFFFFFFF);
+                        Butts.setBackgroundColor(0xFF00C0FF);
+                        Butts.setLayoutParams(new LinearLayout.LayoutParams(-1, -2));
+                        Butts.setOnClickListener(new View.OnClickListener() {
+                                @Override 
+                                public void onClick(View view) {
+                                    alertDialogs.dismiss();
+                                    System.out.println("已确定公告");
+                                }});
+                        linearLayouts.addView(texties);
+                        linearLayouts.addView(textVies);
+                        linearLayouts.addView(Butts);
+                        dialogs.setCancelable(false);
+                        dialogs.setView(linearLayouts);
+                        alertDialogs = dialogs.show();
+                        Looper.loop();
+                    } catch (Exception e) {
+                    }
+                }
+            }).start(); 
+    }
+    private void SelectModeBox(Activity context) {
+        app_Operation_mode_root = (boolean)SPUtils.getParam(getApplicationContext(), "app_Operation_mode_root", false);
+        app_init_mode = (boolean)SPUtils.getParam(getApplicationContext(), "app_init_mode", false);
+        if (app_init_mode == true) {
+            ActivityMain(); 
+            return;
+        }
+		linearLayouts = new LinearLayout(MainActivity.this);
+		linearLayouts.setOrientation(1);
+		linearLayouts.setLayoutParams(new LinearLayout.LayoutParams(-1, -1));
+		linearLayouts.setPadding(40, 40, 40, 40);              
+		dialogs = new AlertDialog.Builder(MainActivity.this, 5);
+		final TextView texties = new TextView(MainActivity.this);
+		texties.setTextColor(0xFF000000);
+		texties.setLayoutParams(new LinearLayout.LayoutParams(-2, -2));
+		texties.setText("运行环境");
+		texties.setTextSize(19.0f);
+		texties.setGravity(5);
+		Button Butts1 = new Button(MainActivity.this);
+		Butts1.setText("ROOT");
+		Butts1.setTextSize(10.0f);
+		Butts1.setTextColor(0xFFFFFFFF);
+		Butts1.setBackgroundColor(0xFF00C0FF);	
+		Butts1.setLayoutParams(new LinearLayout.LayoutParams(-1, -1));
+		LinearLayout.LayoutParams 间距1= (LinearLayout.LayoutParams) Butts1.getLayoutParams();
+		Butts1.setOnClickListener(new View.OnClickListener() {
+				@Override 
+				public void onClick(View view) {
+					alertDialogs.dismiss();
+					System.out.println("ROOT");
+					app_Operation_mode_root = true;
+					ActivityMain(); 
+					}});
+		间距1.topMargin = 100;		
+		Button Butts = new Button(MainActivity.this);
+		Butts.setText("框架");
+		Butts.setTextSize(10.0f);
+		Butts.setTextColor(0xFFFFFFFF);
+		Butts.setBackgroundColor(0xFF00C0FF);
+		Butts.setLayoutParams(new LinearLayout.LayoutParams(-1, -1));
+		LinearLayout.LayoutParams 间距2= (LinearLayout.LayoutParams) Butts.getLayoutParams();
+		Butts.setOnClickListener(new View.OnClickListener() {
+				@Override 
+				public void onClick(View view) {
+					alertDialogs.dismiss();
+					System.out.println("框架");
+					app_Operation_mode_root = false;
+					ActivityMain(); 
+					}});	
+间距2.topMargin = 25;					
+		linearLayouts.addView(texties);
+		linearLayouts.addView(Butts1);
+		linearLayouts.addView(Butts);
+		dialogs.setCancelable(false);
+		dialogs.setView(linearLayouts);
+		alertDialogs = dialogs.show();           	                       
+    }    
+    
+    private void RequestPermission() {
+        if (!Settings.canDrawOverlays(this)) {
+            Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:" + getPackageName()));
+            startActivityForResult(intent, 4444);
+        }    
+    }          
+	public void requestPermission() {
+
+        boolean isGranted = true;
+
+        if (android.os.Build.VERSION.SDK_INT >= 23) {
+            if (this.checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+                isGranted = false;
+            }
+            if (this.checkSelfPermission(Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+                isGranted = false;
+            }
+            if (this.checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+                isGranted = false;
+            }
+            if (this.checkSelfPermission(Manifest.permission.RESTART_PACKAGES) != PackageManager.PERMISSION_GRANTED) {
+                isGranted = false;
+            }
+            if (this.checkSelfPermission(Manifest.permission.REQUEST_COMPANION_RUN_IN_BACKGROUND) != PackageManager.PERMISSION_GRANTED) {
+                isGranted = false;
+            }
+            if (this.checkSelfPermission(Manifest.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS) != PackageManager.PERMISSION_GRANTED) {
+                isGranted = false;
+            }
+            if (this.checkSelfPermission(Manifest.permission.SYSTEM_ALERT_WINDOW) != PackageManager.PERMISSION_GRANTED) {
+                isGranted = false;
+            }
+
+            if (!isGranted) {
+                this.requestPermissions(
+                    new String[]{Manifest.permission.ACCESS_COARSE_LOCATION, Manifest.permission
+                        .ACCESS_FINE_LOCATION,
+                        Manifest.permission.READ_EXTERNAL_STORAGE,
+                        Manifest.permission.RECORD_AUDIO,
+                        Manifest.permission.RESTART_PACKAGES,
+                        Manifest.permission.REQUEST_COMPANION_RUN_IN_BACKGROUND,
+                        Manifest.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
+                        Manifest.permission.SYSTEM_ALERT_WINDOW,
+                        Manifest.permission.WRITE_EXTERNAL_STORAGE},
+                    102);
+            }
+        }
+        if (Build.VERSION.SDK_INT >= 23) {
+            if (!Settings.canDrawOverlays(MainActivity.this)) {
+                Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+										   Uri.parse("package:" + getPackageName()));
+                startActivityForResult(intent, 111);
+            }
+        }
+    }
+	
+
+	
+}

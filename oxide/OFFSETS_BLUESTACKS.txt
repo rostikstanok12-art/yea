@@ -1,0 +1,128 @@
+=== Oxide: Survival Island - Offsets for BlueStacks 5 / MuMu 12 ===
+From il2cpp_dump_and_api_summary.txt
+Target: libil2cpp.so base + RVA
+Tested on BlueStacks 5 Android 11, MuMu 12
+
+--- PlayerManager (TypeDefIndex 9223) ---
+Instance:
+  worldCameraRoot = 0x68 (Transform)
+  mouseLook = 0x70 (MouseLook)
+  raycastManager = 0x88
+  fpManager = 0x90
+  inventory = 0x98 (PlayerInventory)
+  playerMap = 0xA0
+  vitals = 0xC8 (PlayerVitals)
+  stats = 0xD0
+  equipment = 0xE8 (zbZ - weapon holder)
+  compass = 0x100
+  characterModel = 0x150 (GameObject)
+  animator = 0x190
+  lookAngle = 0x1A8 (float)
+  isInAir = 0x1B8 (bool)
+  lastTickPosition = 0x1C8 (Vector3) <- MAIN POS FOR ESP
+  lastSavedPosition = 0x1D4
+  lastDeathPosition = 0x1E0
+
+Static (Il2CppClass->static_fields):
+  sleepingPlayerList = 0x0 (iL<PlayerManager>)
+  activePlayerList = 0x8 (iL<PlayerManager>) <- USE FOR ACTIVE PLAYERS
+  clientPlayerList = 0x10 (List<PlayerManager>) <- USE FOR ESP
+  serverName = 0x18
+  serverBuildNumber = 0x20
+
+How to get on BlueStacks external:
+  1. Get Il2CppClass for PlayerManager via il2cpp_class_from_name(Assembly-CSharp, "", "PlayerManager")
+  2. static_fields = *(uintptr_t*)(class + 0xB8) // offset may vary 0xB8-0xC8
+  3. clientPlayerList = static_fields + 0x10
+  4. List: items = *(uintptr_t*)(list + 0x10), size = *(int*)(list + 0x18)
+  5. Array: vector = array + 0x20, element = *(uintptr_t*)(vector + i*8)
+
+--- MouseLook ---
+  XSensitivity = 0x10
+  YSensitivity = 0x14
+  MinimumX = 0x1C
+  MaximumX = 0x20
+  m_CharacterTargetRot = 0x30 (Quaternion)
+  m_CameraTargetRot = 0x40 (Quaternion)
+
+--- HitscanWeaponConfig (weapon damage, speed, recoil) ---
+  damage = 0x18 (float)
+  MaxDamageOnDistance = 0x1C (Vector2)
+  MinDamageOnDistance = 0x24 (Vector2)
+  MaxDistance = 0x2C (float)
+  BulletSpeed = 0x30 (float)
+  fireRate = 0x34 (float) -> set 0.01 for fast
+  projectilesPerShot = 0x38 (int)
+  BaseDispersion = 0x3C (float) -> set 0 for no spread
+  FullReloadPeriod = 0x48 (float) -> set 0 for instant
+  dispersionConfig = 0x60 (DispersionConfig*)
+  recoilConfig = 0x68 (RecoilConfig*)
+
+--- RecoilConfig ---
+  MinRecoil = 0x18 (Vector2)
+  MaxRecoil = 0x20 (Vector2)
+  MinSideDelta = 0x28 (float)
+  MaxSideDelta = 0x2C (float)
+  RecoilAimMultiplier = 0x30 (float) -> set 0
+  RecoilTime = 0x34
+
+--- DispersionConfig ---
+  minFireDispersion = 0x18
+  maxFireDispersion = 0x1C
+  minDispersion = 0x20 -> 0
+  maxDispersion = 0x24 -> 0
+  dispersionIncreasePerShot = 0x28
+  dispersionDecreaseRate = 0x2C
+
+--- PlayerVitals ---
+  Player = 0x100 (PlayerManager)
+  startHealthMin = 0x110
+  startHealthMax = 0x114
+  m_Temperature = 0x144
+  m_RadiationLevel = 0x148
+
+--- GenericVitals ---
+  m_MaxHealth = 0x88 (float)
+  m_Protection = 0x90
+
+--- zeT (Entity) ---
+  DisplayName = 0x88 (string)
+  Health = 0x98 (zeu<float>)
+  IsGrounded = 0xA8
+  Velocity = 0xB0 (Vector3)
+
+--- List & Array ---
+  List.items = 0x10
+  List.size = 0x18
+  Array.maxLength = 0x18
+  Array.vector = 0x20
+
+--- BlueStacks specific ---
+Ports:
+  BlueStacks 5: 127.0.0.1:5555, 5565, 5575, 5585
+  MuMu 12: 127.0.0.1:7555, 16416
+  Nox: 127.0.0.1:62001, 62025
+
+Root:
+  adb -s 127.0.0.1:5555 root -> restarting adbd as root
+  adb -s 127.0.0.1:5555 shell id -> uid=0(root)
+  adb -s 127.0.0.1:5555 shell setenforce 0
+  adb -s 127.0.0.1:5555 shell getenforce -> Permissive
+
+Package names:
+  com.oxide.survivalisland
+  com.oxide.survival
+  com.catsbit.oxide
+
+libil2cpp base:
+  cat /proc/$(pidof com.oxide.survivalisland)/maps | grep libil2cpp
+  First address is base, e.g., 0x7a3b200000
+  VA = base + RVA
+  Example: HitscanWeaponConfig damage getter RVA 0x... + base
+
+For external cheat on BlueStacks:
+  - Use process_vm_readv syscall 270/271
+  - Need root + Permissive
+  - Read /proc/pid/maps for base
+  - Parse static fields for player list
+  - W2S via Camera.main view matrix from libunity.so

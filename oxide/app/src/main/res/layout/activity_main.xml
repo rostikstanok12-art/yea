@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:gravity="center"
+    android:background="#FF000000"
+    android:padding="20dp">
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Oxide Panda Emu - BlueStacks OpenGL"
+        android:textSize="20sp"
+        android:textColor="#FFFFFF"
+        android:layout_marginBottom="20dp"/>
+    <TextView
+        android:id="@+id/status_text"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Status: checking root..."
+        android:textSize="12sp"
+        android:textColor="#FF00FF00"
+        android:layout_marginBottom="20dp"/>
+    <Button
+        android:id="@+id/btn_root_check"
+        android:layout_width="250dp"
+        android:layout_height="wrap_content"
+        android:text="Check Root (BlueStacks)"
+        android:layout_marginBottom="10dp"/>
+    <Button
+        android:id="@+id/go_app"
+        android:layout_width="250dp"
+        android:layout_height="wrap_content"
+        android:text="Start ESP Overlay"/>
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="BlueStacks: adb -s 127.0.0.1:5555 root -> id should be uid=0 -> setenforce 0 -> Permissive"
+        android:textSize="10sp"
+        android:textColor="#FFAAAAAA"
+        android:layout_marginTop="20dp"/>
+</LinearLayout>

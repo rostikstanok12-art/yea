@@ -1,0 +1,59 @@
+package com.KITE.IPCCond;
+
+import android.annotation.NonNull;
+import android.content.Intent;
+import android.os.IBinder;
+import android.os.Process;
+import android.os.RemoteException;
+import android.view.MotionEvent;
+import android.view.Surface;
+import com.topjohnwu.superuser.ipc.RootService;
+
+import com.KITE.IPCCond.IMutual;
+import com.KITE.SuperJNI;
+
+public class SuperMain extends RootService {
+	static {
+		if (Process.myUid() == 0)
+			System.loadLibrary("main");
+	}
+
+	
+
+	@Override
+	public IBinder onBind(@NonNull Intent intent) {
+		return new IMutual.Stub() {
+			
+            public void setSurface(Surface surface) throws RemoteException {
+                SuperJNI.setSurface(surface);
+            }
+                        
+            public String start(int ScreenX, int ScreenY) throws RemoteException {
+                return SuperJNI.start(ScreenX, ScreenY);
+            }
+
+            public void MotionEventClick(int Event_getAction, float PosX, float PosY) throws RemoteException {
+                SuperJNI.MotionEventClick(Event_getAction, PosX, PosY);
+            }
+
+            @Override
+            public float[] GetImGuiwinsize() throws RemoteException {
+                return SuperJNI.GetImGuiwinsize();
+            }
+            			
+            public void setPid(int pid) throws RemoteException {
+                SuperJNI.setPid(pid);
+            }
+		    
+			public void setKey(String key) {
+				SuperJNI.setKey(key);
+			}
+			
+		
+			public void setUUid(String UUID) {
+				SuperJNI.setUUid(UUID);
+			}
+			
+		};
+	}
+}

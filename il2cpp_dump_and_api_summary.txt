@@ -1,0 +1,2745 @@
+===============================================================================================
+                IL2CPP DUMP & API CHEAT SHEET / REFERENCE GUIDE
+                        Target: Oxide: Survival Island
+===============================================================================================
+
+Generated from Il2CppDumper outputs:
+  - dump.cs (Metadata & Type Definitions, Fields, Properties, Method RVAs)
+  - il2cpp-api.h (Unity IL2CPP C-Exports API Header)
+  - script.json (Script method symbols, addresses, signatures)
+  - stringliteral.json (Extracted strings)
+
+TABLE OF CONTENTS:
+  1. GENERAL OVERVIEW & REVERSE ENGINEERING SUMMARY
+  2. COMPREHENSIVE IL2CPP C/C++ API REFERENCE & USAGE CHEAT SHEET
+     - API Functions by Category (240 Functions)
+     - Practical C++ & Frida Hooking Patterns
+  3. CORE GAMEPLAY ARCHITECTURE & KEY CLASSES
+     - Player System (PlayerManager, CharacterMovement, MouseLook, Flags, AntiCheat)
+     - Weapons & Ballistics (PlayerWeapon, HitscanWeaponConfig, RecoilConfig, DispersionConfig, WeaponBase)
+     - Vitals & Damage (PlayerVitals, EntityVitals, GenericVitals, zeT)
+     - Vehicles, World & Base Building (HelicopterController, BuildingGrade, Locks, Doors, Containers)
+     - Defense & Automation (AutoTurret, AutoTurretBase, Airdrops, Sleepers)
+  4. QUICK-LOOKUP FIELD OFFSET TABLE
+
+===============================================================================================
+SECTION 1: GENERAL OVERVIEW & REVERSE ENGINEERING SUMMARY
+===============================================================================================
+
+Game: Oxide: Survival Island (Rust-inspired mobile multiplayer survival game)
+Architecture: Unity IL2CPP (64-bit / ARM64 or x86_64)
+Networking Framework: Mirror Networking (NetworkBehaviour, NetworkManager, SyncVar, SyncList)
+Primary Assemblies:
+  - Image 0: Assembly-CSharp.dll (Core game logic, player controller, weapons, building, net sync)
+  - Image 26: Mirror.dll (Multiplayer state synchronization, RPCs, Commands, TargetRPCs)
+  - Image 39: Oxide.Utils.dll & OxideApi.* (Oxide specific helper systems, API endpoints)
+  - Image 4: UnityEngine.CoreModule.dll (Transforms, GameObjects, Vectors, Math)
+
+How to calculate Runtime Virtual Address (VA):
+  VA = BaseAddressOf(libil2cpp.so) + RVA (or Offset)
+  In Frida:
+    const base = Module.findBaseAddress("libil2cpp.so");
+    const targetFunc = base.add(0x63404C6); // e.g. RVA from dump
+
+===============================================================================================
+SECTION 2: COMPREHENSIVE IL2CPP C/C++ API REFERENCE & USAGE CHEAT SHEET
+===============================================================================================
+
+Below is the complete catalog of IL2CPP API functions from il2cpp-api.h grouped
+by functionality, followed by concrete practical examples.
+
+-----------------------------------------------------------------------------------------------
+  [CATEGORY] INITIALIZATION & RUNTIME CONFIGURATION (15 functions)
+-----------------------------------------------------------------------------------------------
+  int                              il2cpp_init(const char* domain_name);
+  int                              il2cpp_init_utf16(const Il2CppChar* domain_name);
+  void                             il2cpp_shutdown();
+  void                             il2cpp_set_config_dir(const char* config_path);
+  void                             il2cpp_set_data_dir(const char* data_path);
+  void                             il2cpp_set_temp_dir(const char* temp_path);
+  void                             il2cpp_set_commandline_arguments(int argc, const char* const argv[], const char* basedir);
+  void                             il2cpp_set_commandline_arguments_utf16(int argc, const Il2CppChar* const argv[], const char* basedir);
+  void                             il2cpp_set_config_utf16(const Il2CppChar* executablePath);
+  void                             il2cpp_set_config(const char* executablePath);
+  bool                             il2cpp_class_is_inited(const Il2CppClass* klass);
+  void                             il2cpp_runtime_class_init(Il2CppClass* klass);
+  void                             il2cpp_runtime_object_init(Il2CppObject* obj);
+  void                             il2cpp_runtime_object_init_exception(Il2CppObject* obj, Il2CppException** exc);
+  void                             il2cpp_set_default_thread_affinity(int64_t affinity_mask);
+
+-----------------------------------------------------------------------------------------------
+  [CATEGORY] MEMORY & GARBAGE COLLECTION (GC) (30 functions)
+-----------------------------------------------------------------------------------------------
+  void                             il2cpp_set_memory_callbacks(Il2CppMemoryCallbacks* callbacks);
+  void*                            il2cpp_alloc(size_t size);
+  void                             il2cpp_free(void* ptr);
+  void                             il2cpp_gc_collect(int maxGenerations);
+  int32_t                          il2cpp_gc_collect_a_little();
+  void                             il2cpp_gc_start_incremental_collection();
+  void                             il2cpp_gc_disable();
+  void                             il2cpp_gc_enable();
+  bool                             il2cpp_gc_is_disabled();
+  void                             il2cpp_gc_set_mode(Il2CppGCMode mode);
+  int64_t                          il2cpp_gc_get_max_time_slice_ns();
+  void                             il2cpp_gc_set_max_time_slice_ns(int64_t maxTimeSlice);
+  bool                             il2cpp_gc_is_incremental();
+  int64_t                          il2cpp_gc_get_used_size();
+  int64_t                          il2cpp_gc_get_heap_size();
+  void                             il2cpp_gc_wbarrier_set_field(Il2CppObject* obj, void** targetAddress, void* object);
+  bool                             il2cpp_gc_has_strict_wbarriers();
+  void                             il2cpp_gc_set_external_allocation_tracker(void(*func)(void*, size_t, int));
+  void                             il2cpp_gc_set_external_wbarrier_tracker(void(*func)(void**));
+  void                             il2cpp_gc_foreach_heap(void(*func)(void* data, void* userData), void* userData);
+  void*                            il2cpp_gc_alloc_fixed(size_t size);
+  void                             il2cpp_gc_free_fixed(void* address);
+  void                             il2cpp_gchandle_free(Il2CppGCHandle gchandle);
+  uint32_t                         il2cpp_allocation_granularity();
+  void*                            il2cpp_unity_liveness_allocate_struct(Il2CppClass* filter, int max_object_count, il2cpp_register_object_callback callback, void* userdata, il2cpp_liveness_reallocate_callback reallocate);
+  void                             il2cpp_unity_liveness_free_struct(void* state);
+  void                             il2cpp_profiler_install_allocation(Il2CppProfileAllocFunc callback);
+  Il2CppManagedMemorySnapshot*     il2cpp_capture_memory_snapshot();
+  void                             il2cpp_free_captured_memory_snapshot(Il2CppManagedMemorySnapshot* snapshot);
+  void                             il2cpp_custom_attrs_free(Il2CppCustomAttrInfo* ainfo);
+
+-----------------------------------------------------------------------------------------------
+  [CATEGORY] GC HANDLES & REFERENCES (4 functions)
+-----------------------------------------------------------------------------------------------
+  Il2CppGCHandle                   il2cpp_gchandle_new(Il2CppObject* obj, bool pinned);
+  Il2CppGCHandle                   il2cpp_gchandle_new_weakref(Il2CppObject* obj, bool track_resurrection);
+  Il2CppObject*                    il2cpp_gchandle_get_target(Il2CppGCHandle gchandle);
+  void                             il2cpp_gchandle_foreach_get_target(void(*func)(void* data, void* userData), void* userData);
+
+-----------------------------------------------------------------------------------------------
+  [CATEGORY] DOMAINS, ASSEMBLIES & IMAGES (11 functions)
+-----------------------------------------------------------------------------------------------
+  const Il2CppImage*               il2cpp_get_corlib();
+  const Il2CppImage*               il2cpp_assembly_get_image(const Il2CppAssembly* assembly);
+  Il2CppDomain*                    il2cpp_domain_get();
+  const Il2CppAssembly*            il2cpp_domain_assembly_open(Il2CppDomain* domain, const char* name);
+  const Il2CppAssembly**           il2cpp_domain_get_assemblies(const Il2CppDomain* domain, size_t* size);
+  const Il2CppAssembly*            il2cpp_image_get_assembly(const Il2CppImage* image);
+  const char*                      il2cpp_image_get_name(const Il2CppImage* image);
+  const char*                      il2cpp_image_get_filename(const Il2CppImage* image);
+  const MethodInfo*                il2cpp_image_get_entry_point(const Il2CppImage* image);
+  size_t                           il2cpp_image_get_class_count(const Il2CppImage* image);
+  const Il2CppClass*               il2cpp_image_get_class(const Il2CppImage* image, size_t index);
+
+-----------------------------------------------------------------------------------------------
+  [CATEGORY] CLASSES & TYPES INTROSPECTION (60 functions)
+-----------------------------------------------------------------------------------------------
+  void                             il2cpp_class_for_each(void(*klassReportFunc)(Il2CppClass* klass, void* userData), void* userData);
+  const Il2CppType*                il2cpp_class_enum_basetype(Il2CppClass* klass);
+  bool                             il2cpp_class_is_generic(const Il2CppClass* klass);
+  bool                             il2cpp_class_is_inflated(const Il2CppClass* klass);
+  bool                             il2cpp_class_is_assignable_from(Il2CppClass* klass, Il2CppClass* oklass);
+  bool                             il2cpp_class_is_subclass_of(Il2CppClass* klass, Il2CppClass* klassc, bool check_interfaces);
+  bool                             il2cpp_class_has_parent(Il2CppClass* klass, Il2CppClass* klassc);
+  Il2CppClass*                     il2cpp_class_from_il2cpp_type(const Il2CppType* type);
+  Il2CppClass*                     il2cpp_class_from_name(const Il2CppImage* image, const char* namespaze, const char* name);
+  Il2CppClass*                     il2cpp_class_from_system_type(Il2CppReflectionType* type);
+  Il2CppClass*                     il2cpp_class_get_element_class(Il2CppClass* klass);
+  const EventInfo*                 il2cpp_class_get_events(Il2CppClass* klass, void** iter);
+  FieldInfo*                       il2cpp_class_get_fields(Il2CppClass* klass, void** iter);
+  Il2CppClass*                     il2cpp_class_get_nested_types(Il2CppClass* klass, void** iter);
+  Il2CppClass*                     il2cpp_class_get_interfaces(Il2CppClass* klass, void** iter);
+  const PropertyInfo*              il2cpp_class_get_properties(Il2CppClass* klass, void** iter);
+  const PropertyInfo*              il2cpp_class_get_property_from_name(Il2CppClass* klass, const char* name);
+  FieldInfo*                       il2cpp_class_get_field_from_name(Il2CppClass* klass, const char* name);
+  const MethodInfo*                il2cpp_class_get_methods(Il2CppClass* klass, void** iter);
+  const MethodInfo*                il2cpp_class_get_method_from_name(Il2CppClass* klass, const char* name, int argsCount);
+  const char*                      il2cpp_class_get_name(Il2CppClass* klass);
+  void                             il2cpp_type_get_name_chunked(const Il2CppType* type, void(*chunkReportFunc)(void* data, void* userData), void* userData);
+  const char*                      il2cpp_class_get_namespace(Il2CppClass* klass);
+  Il2CppClass*                     il2cpp_class_get_parent(Il2CppClass* klass);
+  Il2CppClass*                     il2cpp_class_get_declaring_type(Il2CppClass* klass);
+  int32_t                          il2cpp_class_instance_size(Il2CppClass* klass);
+  size_t                           il2cpp_class_num_fields(const Il2CppClass* enumKlass);
+  bool                             il2cpp_class_is_valuetype(const Il2CppClass* klass);
+  int32_t                          il2cpp_class_value_size(Il2CppClass* klass, uint32_t* align);
+  bool                             il2cpp_class_is_blittable(const Il2CppClass* klass);
+  int                              il2cpp_class_get_flags(const Il2CppClass* klass);
+  bool                             il2cpp_class_is_abstract(const Il2CppClass* klass);
+  bool                             il2cpp_class_is_interface(const Il2CppClass* klass);
+  int                              il2cpp_class_array_element_size(const Il2CppClass* klass);
+  Il2CppClass*                     il2cpp_class_from_type(const Il2CppType* type);
+  const Il2CppType*                il2cpp_class_get_type(Il2CppClass* klass);
+  uint32_t                         il2cpp_class_get_type_token(Il2CppClass* klass);
+  bool                             il2cpp_class_has_attribute(Il2CppClass* klass, Il2CppClass* attr_class);
+  bool                             il2cpp_class_has_references(Il2CppClass* klass);
+  bool                             il2cpp_class_is_enum(const Il2CppClass* klass);
+  const Il2CppImage*               il2cpp_class_get_image(Il2CppClass* klass);
+  const char*                      il2cpp_class_get_assemblyname(const Il2CppClass* klass);
+  int                              il2cpp_class_get_rank(const Il2CppClass* klass);
+  uint32_t                         il2cpp_class_get_data_size(const Il2CppClass* klass);
+  void*                            il2cpp_class_get_static_field_data(const Il2CppClass* klass);
+  size_t                           il2cpp_class_get_bitmap_size(const Il2CppClass* klass);
+  void                             il2cpp_class_get_bitmap(Il2CppClass* klass, size_t* bitmap);
+  Il2CppObject*                    il2cpp_type_get_object(const Il2CppType* type);
+  int                              il2cpp_type_get_type(const Il2CppType* type);
+  Il2CppClass*                     il2cpp_type_get_class_or_element_class(const Il2CppType* type);
+  char*                            il2cpp_type_get_name(const Il2CppType* type);
+  bool                             il2cpp_type_is_byref(const Il2CppType* type);
+  uint32_t                         il2cpp_type_get_attrs(const Il2CppType* type);
+  bool                             il2cpp_type_equals(const Il2CppType* type, const Il2CppType* otherType);
+  char*                            il2cpp_type_get_assembly_qualified_name(const Il2CppType* type);
+  char*                            il2cpp_type_get_reflection_name(const Il2CppType* type);
+  bool                             il2cpp_type_is_static(const Il2CppType* type);
+  bool                             il2cpp_type_is_pointer_type(const Il2CppType* type);
+  void                             il2cpp_class_set_userdata(Il2CppClass* klass, void* userdata);
+  int                              il2cpp_class_get_userdata_offset();
+
+-----------------------------------------------------------------------------------------------
+  [CATEGORY] FIELDS & MEMBER VARIABLES (OFFSETS & VALUES) (15 functions)
+-----------------------------------------------------------------------------------------------
+  int                              il2cpp_field_get_flags(FieldInfo* field);
+  const FieldInfo*                 il2cpp_field_get_from_reflection(const Il2CppReflectionField* field);
+  const char*                      il2cpp_field_get_name(FieldInfo* field);
+  Il2CppClass*                     il2cpp_field_get_parent(FieldInfo* field);
+  Il2CppReflectionField*           il2cpp_field_get_object(FieldInfo* field, Il2CppClass* refclass);
+  size_t                           il2cpp_field_get_offset(FieldInfo* field);
+  const Il2CppType*                il2cpp_field_get_type(FieldInfo* field);
+  void                             il2cpp_field_get_value(Il2CppObject* obj, FieldInfo* field, void* value);
+  Il2CppObject*                    il2cpp_field_get_value_object(FieldInfo* field, Il2CppObject* obj);
+  bool                             il2cpp_field_has_attribute(FieldInfo* field, Il2CppClass* attr_class);
+  void                             il2cpp_field_set_value(Il2CppObject* obj, FieldInfo* field, void* value);
+  void                             il2cpp_field_static_get_value(FieldInfo* field, void* value);
+  void                             il2cpp_field_static_set_value(FieldInfo* field, void* value);
+  void                             il2cpp_field_set_value_object(Il2CppObject* instance, FieldInfo* field, Il2CppObject* value);
+  bool                             il2cpp_field_is_literal(FieldInfo* field);
+
+-----------------------------------------------------------------------------------------------
+  [CATEGORY] METHODS & RUNTIME INVOCATION (17 functions)
+-----------------------------------------------------------------------------------------------
+  const Il2CppType*                il2cpp_method_get_return_type(const MethodInfo* method);
+  Il2CppClass*                     il2cpp_method_get_declaring_type(const MethodInfo* method);
+  const char*                      il2cpp_method_get_name(const MethodInfo* method);
+  const MethodInfo*                il2cpp_method_get_from_reflection(const Il2CppReflectionMethod* method);
+  Il2CppReflectionMethod*          il2cpp_method_get_object(const MethodInfo* method, Il2CppClass* refclass);
+  bool                             il2cpp_method_is_generic(const MethodInfo* method);
+  bool                             il2cpp_method_is_inflated(const MethodInfo* method);
+  bool                             il2cpp_method_is_instance(const MethodInfo* method);
+  uint32_t                         il2cpp_method_get_param_count(const MethodInfo* method);
+  const Il2CppType*                il2cpp_method_get_param(const MethodInfo* method, uint32_t index);
+  Il2CppClass*                     il2cpp_method_get_class(const MethodInfo* method);
+  bool                             il2cpp_method_has_attribute(const MethodInfo* method, Il2CppClass* attr_class);
+  uint32_t                         il2cpp_method_get_flags(const MethodInfo* method, uint32_t* iflags);
+  uint32_t                         il2cpp_method_get_token(const MethodInfo* method);
+  const char*                      il2cpp_method_get_param_name(const MethodInfo* method, uint32_t index);
+  Il2CppObject*                    il2cpp_runtime_invoke(const MethodInfo* method, void* obj, void** params, Il2CppException** exc);
+  Il2CppObject*                    il2cpp_runtime_invoke_convert_args(const MethodInfo* method, void* obj, Il2CppObject** params, int paramCount, Il2CppException** exc);
+
+-----------------------------------------------------------------------------------------------
+  [CATEGORY] PROPERTIES (5 functions)
+-----------------------------------------------------------------------------------------------
+  uint32_t                         il2cpp_property_get_flags(PropertyInfo* prop);
+  const MethodInfo*                il2cpp_property_get_get_method(PropertyInfo* prop);
+  const MethodInfo*                il2cpp_property_get_set_method(PropertyInfo* prop);
+  const char*                      il2cpp_property_get_name(PropertyInfo* prop);
+  Il2CppClass*                     il2cpp_property_get_parent(PropertyInfo* prop);
+
+-----------------------------------------------------------------------------------------------
+  [CATEGORY] OBJECT ALLOCATION, BOXING & UNBOXING (7 functions)
+-----------------------------------------------------------------------------------------------
+  uint32_t                         il2cpp_object_header_size();
+  Il2CppClass*                     il2cpp_object_get_class(Il2CppObject* obj);
+  uint32_t                         il2cpp_object_get_size(Il2CppObject* obj);
+  const MethodInfo*                il2cpp_object_get_virtual_method(Il2CppObject* obj, const MethodInfo* method);
+  Il2CppObject*                    il2cpp_object_new(const Il2CppClass* klass);
+  void*                            il2cpp_object_unbox(Il2CppObject* obj);
+  Il2CppObject*                    il2cpp_value_box(Il2CppClass* klass, void* data);
+
+-----------------------------------------------------------------------------------------------
+  [CATEGORY] STRINGS (8 functions)
+-----------------------------------------------------------------------------------------------
+  int32_t                          il2cpp_string_length(Il2CppString* str);
+  Il2CppChar*                      il2cpp_string_chars(Il2CppString* str);
+  Il2CppString*                    il2cpp_string_new(const char* str);
+  Il2CppString*                    il2cpp_string_new_len(const char* str, uint32_t length);
+  Il2CppString*                    il2cpp_string_new_utf16(const Il2CppChar* text, int32_t len);
+  Il2CppString*                    il2cpp_string_new_wrapper(const char* str);
+  Il2CppString*                    il2cpp_string_intern(Il2CppString* str);
+  Il2CppString*                    il2cpp_string_is_interned(Il2CppString* str);
+
+-----------------------------------------------------------------------------------------------
+  [CATEGORY] ARRAYS (9 functions)
+-----------------------------------------------------------------------------------------------
+  Il2CppClass*                     il2cpp_array_class_get(Il2CppClass* element_class, uint32_t rank);
+  uint32_t                         il2cpp_array_length(Il2CppArray* array);
+  uint32_t                         il2cpp_array_get_byte_length(Il2CppArray* array);
+  Il2CppArray*                     il2cpp_array_new(Il2CppClass* elementTypeInfo, il2cpp_array_size_t length);
+  Il2CppArray*                     il2cpp_array_new_specific(Il2CppClass* arrayTypeInfo, il2cpp_array_size_t length);
+  Il2CppArray*                     il2cpp_array_new_full(Il2CppClass* array_class, il2cpp_array_size_t* lengths, il2cpp_array_size_t* lower_bounds);
+  Il2CppClass*                     il2cpp_bounded_array_class_get(Il2CppClass* element_class, uint32_t rank, bool bounded);
+  int                              il2cpp_array_element_size(const Il2CppClass* array_class);
+  uint32_t                         il2cpp_array_object_header_size();
+
+-----------------------------------------------------------------------------------------------
+  [CATEGORY] THREADING (13 functions)
+-----------------------------------------------------------------------------------------------
+  void                             il2cpp_profiler_install_thread(Il2CppProfileThreadFunc start, Il2CppProfileThreadFunc end);
+  Il2CppThread*                    il2cpp_thread_current();
+  Il2CppThread*                    il2cpp_thread_attach(Il2CppDomain* domain);
+  void                             il2cpp_thread_detach(Il2CppThread* thread);
+  bool                             il2cpp_is_vm_thread(Il2CppThread* thread);
+  void                             il2cpp_current_thread_walk_frame_stack(Il2CppFrameWalkFunc func, void* user_data);
+  void                             il2cpp_thread_walk_frame_stack(Il2CppThread* thread, Il2CppFrameWalkFunc func, void* user_data);
+  bool                             il2cpp_current_thread_get_top_frame(Il2CppStackFrameInfo* frame);
+  bool                             il2cpp_thread_get_top_frame(Il2CppThread* thread, Il2CppStackFrameInfo* frame);
+  bool                             il2cpp_current_thread_get_frame_at(int32_t offset, Il2CppStackFrameInfo* frame);
+  bool                             il2cpp_thread_get_frame_at(Il2CppThread* thread, int32_t offset, Il2CppStackFrameInfo* frame);
+  int32_t                          il2cpp_current_thread_get_stack_depth();
+  int32_t                          il2cpp_thread_get_stack_depth(Il2CppThread* thread);
+
+-----------------------------------------------------------------------------------------------
+  [CATEGORY] EXCEPTIONS & STACKTRACE (9 functions)
+-----------------------------------------------------------------------------------------------
+  void                             il2cpp_raise_exception(Il2CppException*);
+  Il2CppException*                 il2cpp_exception_from_name_msg(const Il2CppImage* image, const char* name_space, const char* name, const char* msg);
+  Il2CppException*                 il2cpp_get_exception_argument_null(const char* arg);
+  void                             il2cpp_format_exception(const Il2CppException* ex, char* message, int message_size);
+  void                             il2cpp_format_stack_trace(const Il2CppException* ex, char* output, int output_size);
+  void                             il2cpp_unhandled_exception(Il2CppException*);
+  void                             il2cpp_native_stack_trace(const Il2CppException* ex, uintptr_t** addresses, int* numFrames, char** imageUUID, char** imageName);
+  void                             il2cpp_runtime_unhandled_exception_policy_set(Il2CppRuntimeUnhandledExceptionPolicy value);
+  void                             il2cpp_override_stack_backtrace(Il2CppBacktraceFunc stackBacktraceFunc);
+
+-----------------------------------------------------------------------------------------------
+  [CATEGORY] CUSTOM ATTRIBUTES (6 functions)
+-----------------------------------------------------------------------------------------------
+  Il2CppCustomAttrInfo*            il2cpp_custom_attrs_from_class(Il2CppClass* klass);
+  Il2CppCustomAttrInfo*            il2cpp_custom_attrs_from_method(const MethodInfo* method);
+  Il2CppCustomAttrInfo*            il2cpp_custom_attrs_from_field(const FieldInfo* field);
+  Il2CppObject*                    il2cpp_custom_attrs_get_attr(Il2CppCustomAttrInfo* ainfo, Il2CppClass* attr_klass);
+  bool                             il2cpp_custom_attrs_has_attr(Il2CppCustomAttrInfo* ainfo, Il2CppClass* attr_klass);
+  Il2CppArray*                     il2cpp_custom_attrs_construct(Il2CppCustomAttrInfo* cinfo);
+
+-----------------------------------------------------------------------------------------------
+  [CATEGORY] INTERNAL CALLS (ICALL) (2 functions)
+-----------------------------------------------------------------------------------------------
+  void                             il2cpp_add_internal_call(const char* name, Il2CppMethodPointer method);
+  Il2CppMethodPointer              il2cpp_resolve_icall(const char* name);
+
+-----------------------------------------------------------------------------------------------
+  [CATEGORY] PROFILER & DEBUGGER (9 functions)
+-----------------------------------------------------------------------------------------------
+  void                             il2cpp_profiler_install(Il2CppProfiler* prof, Il2CppProfileFunc shutdown_callback);
+  void                             il2cpp_profiler_set_events(Il2CppProfileFlags events);
+  void                             il2cpp_profiler_install_enter_leave(Il2CppProfileMethodFunc enter, Il2CppProfileMethodFunc fleave);
+  void                             il2cpp_profiler_install_gc(Il2CppProfileGCFunc callback, Il2CppProfileGCResizeFunc heap_resize_callback);
+  void                             il2cpp_profiler_install_fileio(Il2CppProfileFileIOFunc callback);
+  void                             il2cpp_debugger_set_agent_options(const char* options);
+  bool                             il2cpp_is_debugger_attached();
+  void                             il2cpp_register_debugger_agent_transport(Il2CppDebuggerTransport* debuggerTransport);
+  bool                             il2cpp_debug_get_method_info(const MethodInfo*, Il2CppMethodDebugInfo* methodDebugInfo);
+
+-----------------------------------------------------------------------------------------------
+  [CATEGORY] MISC & PLATFORM (20 functions)
+-----------------------------------------------------------------------------------------------
+  bool                             il2cpp_stats_dump_to_file(const char* path);
+  uint64_t                         il2cpp_stats_get_value(Il2CppStat stat);
+  void                             il2cpp_stop_gc_world();
+  void                             il2cpp_start_gc_world();
+  uint32_t                         il2cpp_offset_of_array_length_in_array_object_header();
+  uint32_t                         il2cpp_offset_of_array_bounds_in_array_object_header();
+  void                             il2cpp_unity_liveness_calculation_from_root(Il2CppObject* root, void* state);
+  void                             il2cpp_unity_liveness_calculation_from_statics(void* state);
+  void                             il2cpp_unity_liveness_finalize(void* state);
+  void                             il2cpp_monitor_enter(Il2CppObject* obj);
+  bool                             il2cpp_monitor_try_enter(Il2CppObject* obj, uint32_t timeout);
+  void                             il2cpp_monitor_exit(Il2CppObject* obj);
+  void                             il2cpp_monitor_pulse(Il2CppObject* obj);
+  void                             il2cpp_monitor_pulse_all(Il2CppObject* obj);
+  void                             il2cpp_monitor_wait(Il2CppObject* obj);
+  bool                             il2cpp_monitor_try_wait(Il2CppObject* obj, uint32_t timeout);
+  void                             il2cpp_set_find_plugin_callback(Il2CppSetFindPlugInCallback method);
+  void                             il2cpp_register_log_callback(Il2CppLogCallback method);
+  void                             il2cpp_unity_install_unitytls_interface(const void* unitytlsInterfaceStruct);
+  void                             il2cpp_unity_set_android_network_up_state_func(Il2CppAndroidUpStateFunc func);
+
+===============================================================================================
+PRACTICAL IL2CPP API USAGE CHEAT SHEET (C++ & FRIDA)
+===============================================================================================
+
+1. INITIALIZING & GETTING IMAGE / CLASSES IN C++:
+   // Attach thread if on native background thread:
+   Il2CppDomain* domain = il2cpp_domain_get();
+   il2cpp_thread_attach(domain);
+
+   // Find Assembly-CSharp:
+   const Il2CppAssembly* assembly = il2cpp_domain_assembly_open(domain, "Assembly-CSharp");
+   const Il2CppImage* image = il2cpp_assembly_get_image(assembly);
+
+   // Find Class (e.g. PlayerManager, global namespace ""):
+   Il2CppClass* playerMgrClass = il2cpp_class_from_name(image, "", "PlayerManager");
+
+2. ACCESSING FIELDS & STATIC FIELDS IN C++:
+   // Get static field data directly:
+   FieldInfo* clientPlayersField = il2cpp_class_get_field_from_name(playerMgrClass, "clientPlayerList");
+   void* staticPlayersList = nullptr;
+   il2cpp_field_static_get_value(clientPlayersField, &staticPlayersList);
+
+   // Reading an instance field via offset:
+   size_t vitalsOffset = 0xC8; // from PlayerManager dump
+   void* vitalsObj = *(void**)((uintptr_t)playerInstance + vitalsOffset);
+
+   // Or via IL2CPP API:
+   FieldInfo* vitalsField = il2cpp_class_get_field_from_name(playerMgrClass, "vitals");
+   void* vitalsInstance = nullptr;
+   il2cpp_field_get_value((Il2CppObject*)playerInstance, vitalsField, &vitalsInstance);
+
+3. CALLING METHODS AT RUNTIME VIA il2cpp_runtime_invoke:
+   const MethodInfo* method = il2cpp_class_get_method_from_name(playerMgrClass, "Respawn", 0);
+   Il2CppException* exc = nullptr;
+   il2cpp_runtime_invoke(method, playerInstance, nullptr, &exc);
+
+4. WORKING WITH IL2CPP STRINGS:
+   // Create IL2CPP managed string from C string:
+   Il2CppString* str = il2cpp_string_new("Hello from Native Mod");
+   // Read managed string:
+   const Il2CppChar* chars = il2cpp_string_chars(str); // UTF-16 wchar_t*
+   int len = il2cpp_string_length(str);
+
+5. FRIDA JAVASCRIPT HOOKING EXAMPLES:
+   // Method 1: Hook by RVA offset directly:
+   const base = Module.findBaseAddress("libil2cpp.so");
+   const rva = 0x713BBAE; // HitscanWeaponConfig::iU
+   Interceptor.attach(base.add(rva), {
+       onEnter: function(args) {
+           // this = args[0], param1 = args[1]
+           console.log("[+] Method called on instance: " + args[0]);
+       },
+       onLeave: function(retval) {
+           // retval is float in xmm0/s0
+       }
+   });
+
+   // Method 2: Hooking via il2cpp exports:
+   const il2cpp_domain_get = new NativeFunction(Module.findExportByName("libil2cpp.so", "il2cpp_domain_get"), "pointer", []);
+   const il2cpp_string_new = new NativeFunction(Module.findExportByName("libil2cpp.so", "il2cpp_string_new"), "pointer", ["pointer"]);
+
+===============================================================================================
+SECTION 3: CORE GAMEPLAY ARCHITECTURE & KEY CLASSES (ASSEMBLY-CSHARP.DLL)
+===============================================================================================
+
+***********************************************************************************************
+CLASS / STRUCT: PlayerManager
+***********************************************************************************************
+  public class PlayerManager : NetworkBehaviour // TypeDefIndex: 9223
+  {
+
+  --- KEY FIELDS & OFFSETS ---
+    public Transform worldCameraRoot; // 0x68
+    public MouseLook mouseLook; // 0x70
+    public zeP playerEventHandler; // 0x78
+    private InterfaceReference<zCe> playerDeathHandlerReference; // 0x80
+    public RaycastManager raycastManager; // 0x88
+    public FPManager fpManager; // 0x90
+    public PlayerInventory inventory; // 0x98
+    public PlayerMap playerMap; // 0xA0
+    public DE networkPositionObserver; // 0xA8
+    private InterfaceReference<ZL> kccReference; // 0xB0
+    private InterfaceReference<zbr> interactionReference; // 0xB8
+    private InterfaceReference<zbL> crafterReference; // 0xC0
+    public PlayerVitals vitals; // 0xC8
+    public zCm stats; // 0xD0
+    private InterfaceReference<zbm> lootReference; // 0xD8
+    public zbD lifeStory; // 0xE0
+    public zbZ equipment; // 0xE8
+    public InterfaceReference<MI> weaponReference; // 0xF0
+    private InterfaceReference<ap> blueprintsReference; // 0xF8
+    public zbf compass; // 0x100
+    public al statistics; // 0x108
+    public zbF purchases; // 0x110
+    public aQ missions; // 0x118
+    public zbI team; // 0x120
+    public zNR statusEffectVisuals; // 0x128
+    public iV nicklabel; // 0x130
+    public VoiceBroadcastTrigger broadcastTrigger; // 0x138
+    public zZU voicePlayer; // 0x140
+    public tE simulation; // 0x148
+    public GameObject characterModel; // 0x150
+    public bu playerNetworkSubscriptionController; // 0x158
+    public PlayerCalendarData playerCalendarData; // 0x160
+    private Collider voiceCollider; // 0x168
+    private CapsuleCollider triggerProbe; // 0x170
+    private PlayerLevelsConfig levelsConfig; // 0x178
+    private AimAssistConfig aimAssistConfig; // 0x180
+    private bool <KlB>k__BackingField = false; // 0x188
+    public static iL<PlayerManager> sleepingPlayerList; // 0x0
+    public static iL<PlayerManager> activePlayerList; // 0x8
+    public static readonly List<PlayerManager> clientPlayerList; // 0x10
+    public static string serverName; // 0x18
+    public static string serverBuildNumber; // 0x20
+    public Animator animator; // 0x190
+    private FPWeaponBase[] weapons; // 0x198
+    public float NextChatTime; // 0x1A0
+    private float KlZ; // 0x1A4
+    public float lookAngle; // 0x1A8
+    private const Jm.Enum Klf;
+    private const float KlD;
+    public hB combat; // 0x1B0
+    public bool isInAir = false; // 0x1B8
+    public bool isOnPlayer = false; // 0x1B9
+    public float violationLevel; // 0x1BC
+    public float speedhackPauseTime; // 0x1C0
+    public float speedhackDistance; // 0x1C4
+    public Vector3 lastTickPosition; // 0x1C8
+    public Vector3 lastSavedPosition; // 0x1D4
+    public Vector3 lastDeathPosition; // 0x1E0
+    public float lastTick; // 0x1EC
+    public float flyhackPauseTime; // 0x1F0
+    public float flyhackDistanceVertical; // 0x1F4
+    public float flyhackInAirSeconds; // 0x1F8
+    public float flyhackDistanceHorizontal; // 0x1FC
+    public HackType lastViolationType; // 0x200
+    public float nextTerrainCheck; // 0x204
+    public bool respawning = false; // 0x208
+    public bool suspectedControl = false; // 0x209
+    public List<tx> triggers; // 0x210
+    private float KlO; // 0x218
+    protected string Klq; // 0x220
+    private float Klu; // 0x228
+    private float Klg; // 0x22C
+    private bool KlH = false; // 0x230
+    private bool <Klv>k__BackingField = false; // 0x231
+    private zGH <Kly>k__BackingField; // 0x238
+    private fk KlF; // 0x240
+    private Zw KlI; // 0x248
+    public PlayerManager.PlayerFlags playerFlags; // 0x250
+    public bool prime = false; // 0x254
+    public bool kicked = false; // 0x255
+    private float Kld; // 0x258
+    private Cupboard Klw; // 0x260
+    public ForeignCupboardZoneIntrusion foreignCupboardZoneIntrusion; // 0x268
+    private float KlY; // 0x270
+    public string userID; // 0x278
+    public string teamName; // 0x280
+    public uint vehicleID; // 0x288
+    public uint seatID; // 0x28C
+    public string clanId; // 0x290
+    public string clanTag; // 0x298
+    private bool Klc = false; // 0x2A0
+    private bool Klx = false; // 0x2A1
+    private bool KlV = false; // 0x2A2
+    private float KSE; // 0x2A4
+    private bool KSz = false; // 0x2A8
+    private bool KSk = false; // 0x2A9
+    private bool KSh = false; // 0x2AA
+    public uint ziplineID; // 0x2AC
+    private bool KSi = false; // 0x2B0
+    public bool isImmortal = false; // 0x2B1
+    private bool KSa = false; // 0x2B2
+    private bool KSt = false; // 0x2B3
+    private bool KSp = false; // 0x2B4
+    private VehicleManager KSr; // 0x2B8
+    private Seat KSW; // 0x2C0
+    private PowerlineSupportZiplineCarriage KSG; // 0x2C8
+    private Vector3 KSs; // 0x2D0
+    private Vector3 KSJ; // 0x2DC
+    private VoicePlayerState KSn; // 0x2E8
+    private fk.fz KSQ; // 0x2F0
+    private Zw.Zd KSM; // 0x2F8
+    private zGT KSl; // 0x300
+    private ul KSS; // 0x308
+    private Rp KSA; // 0x310
+    public PlayerManager observedPlayer; // 0x318
+    public string observedId; // 0x320
+    public uint observedNetId; // 0x328
+    public float observeCameraDist; // 0x32C
+    public Vector3 originalPosition; // 0x330
+    private float KSo; // 0x33C
+    private float KSX; // 0x340
+    private float KSK; // 0x344
+    private string[] KSU; // 0x348
+    private bool[] KSe; // 0x350
+    private static readonly HashSet<PlayerManager> KSC; // 0x28
+    private ZB KSb; // 0x358
+    private int KSm; // 0x360
+    private float KSN; // 0x364
+    private readonly float KSj; // 0x368
+    private readonly float KST; // 0x36C
+    public Action<string, string> _Mirror_SyncVarHookDelegate_userID; // 0x370
+    public Action<string, string> _Mirror_SyncVarHookDelegate_teamName; // 0x378
+    public Action<uint, uint> _Mirror_SyncVarHookDelegate_vehicleID; // 0x380
+    public Action<uint, uint> _Mirror_SyncVarHookDelegate_seatID; // 0x388
+    public Action<string, string> _Mirror_SyncVarHookDelegate_clanId; // 0x390
+    public Action<string, string> _Mirror_SyncVarHookDelegate_clanTag; // 0x398
+    public Action<uint, uint> _Mirror_SyncVarHookDelegate_ziplineID; // 0x3A0
+
+  --- PROPERTIES ---
+    public ZL CzZ { get; }
+    public zCe Czf { get; }
+    public zbr CzD { get; }
+    public zbm CzO { get; }
+    public ap Czq { get; }
+    public zbL Czu { get; }
+    public MI Czg { get; }
+    public bool KlB { get; set; }
+    public GameControllerBase CzH { get; }
+    public bool Klv { get; set; }
+    public zGH Kly { get; set; }
+    public fk Czv { get; }
+    public Zw Czy { get; }
+    public bool CzF { get; }
+    public bool CzI { get; }
+    ... and 48 more properties
+
+  --- KEY METHODS (RVA & SIGNATURES) ---
+    // RVA: 0x65DC739 Offset: 0x65D8739 VA: 0x65DC739
+      -> public void gB(string reason) { }
+    // RVA: 0x65DC73A Offset: 0x65D873A VA: 0x65DC73A
+      -> public void zmH() { }
+    // RVA: 0x65DC73B Offset: 0x65D873B VA: 0x65DC73B
+      -> public static void zjK(List<PlayerManager> E) { }
+    // RVA: 0x65DC945 Offset: 0x65D8945 VA: 0x65DC945
+      -> private static void .cctor() { }
+    // RVA: 0x65DD977 Offset: 0x65D9977 VA: 0x65DD977
+      -> public bool JUo() { }
+    // RVA: 0x65DDA08 Offset: 0x65D9A08 VA: 0x65DDA08
+      -> public ap JKu() { }
+    // RVA: 0x65DDA3F Offset: 0x65D9A3F VA: 0x65DDA3F
+      -> public zbL JKg() { }
+    // RVA: 0x65DDA76 Offset: 0x65D9A76 VA: 0x65DDA76
+      -> protected static void zdY(NetworkBehaviour E, NetworkReader z, NetworkConnectionToClient k) { }
+    // RVA: 0x65DDC5F Offset: 0x65D9C5F VA: 0x65DDC5F
+      -> public bool JKv() { }
+    // RVA: 0x65DDC66 Offset: 0x65D9C66 VA: 0x65DDC66
+      -> protected static void Zh(NetworkBehaviour E, NetworkReader z, NetworkConnectionToClient k) { }
+    // RVA: 0x65DDDA2 Offset: 0x65D9DA2 VA: 0x65DDDA2
+      -> public void Ban(string reason) { }
+    // RVA: 0x65DDDA3 Offset: 0x65D9DA3 VA: 0x65DDDA3
+      -> public void JUf(string E, string z) { }
+    // RVA: 0x65DDEB5 Offset: 0x65D9EB5 VA: 0x65DDEB5
+      -> protected void kPg(string E) { }
+    // RVA: 0x65DDEB6 Offset: 0x65D9EB6 VA: 0x65DDEB6
+      -> protected static void zXT(NetworkBehaviour E, NetworkReader z, NetworkConnectionToClient k) { }
+    // RVA: 0x65DDFE6 Offset: 0x65D9FE6 VA: 0x65DDFE6
+      -> private void JKY(zGH E) { }
+    // RVA: 0x65DDFF9 Offset: 0x65D9FF9 VA: 0x65DDFF9 Slot: 8
+      -> public override void DeserializeSyncVars(NetworkReader reader, bool initialState) { }
+    // RVA: 0x65DE657 Offset: 0x65DA657 VA: 0x65DE657
+      -> public void eU() { }
+    // RVA: 0x65DE658 Offset: 0x65DA658 VA: 0x65DE658
+      -> protected static void JNW(NetworkBehaviour E, NetworkReader z, NetworkConnectionToClient k) { }
+    // RVA: 0x65DE861 Offset: 0x65DA861 VA: 0x65DE861
+      -> public void kgR(float i) { }
+    // RVA: 0x65DE8E6 Offset: 0x65DA8E6 VA: 0x65DE8E6
+      -> public void JbN([In] uint E) { }
+    // RVA: 0x65DE939 Offset: 0x65DA939 VA: 0x65DE939
+      -> protected static void Jmy(NetworkBehaviour E, NetworkReader z, NetworkConnectionToClient k) { }
+    // RVA: 0x65DEA69 Offset: 0x65DAA69 VA: 0x65DEA69
+      -> public static PlayerManager JCS(string E) { }
+    // RVA: 0x65DEC03 Offset: 0x65DAC03 VA: 0x65DEC03
+      -> protected static void JmT(NetworkBehaviour E, NetworkReader z, NetworkConnectionToClient k) { }
+    // RVA: 0x65DED67 Offset: 0x65DAD67 VA: 0x65DED67
+      -> public void Jbh([In] string E) { }
+    // RVA: 0x65DEDBC Offset: 0x65DADBC VA: 0x65DEDBC
+      -> protected void zIH(string E) { }
+    ... total methods: 647
+
+
+***********************************************************************************************
+CLASS / STRUCT: CharacterMovement
+***********************************************************************************************
+  public sealed class CharacterMovement : MonoBehaviour // TypeDefIndex: 798
+  {
+
+  --- KEY FIELDS & OFFSETS ---
+    private float _maxLateralSpeed; // 0x20
+    private float _maxRiseSpeed; // 0x24
+    private float _maxFallSpeed; // 0x28
+    private bool _useGravity = false; // 0x2C
+    private Vector3 _gravity; // 0x30
+    private bool _slideOnSteepSlope = false; // 0x3C
+    private float _slopeLimit; // 0x40
+    private float _slideGravityMultiplier; // 0x44
+    private bool _snapToGround = false; // 0x48
+    private float _snapStrength; // 0x4C
+    private static readonly Collider[] MoZ; // 0x0
+    private Coroutine Mof; // 0x50
+    private Vector3 MoD; // 0x58
+    private float MoO; // 0x64
+    private bool Moq = false; // 0x68
+    private float Mou; // 0x6C
+    private bool Mog = false; // 0x70
+    private Vector3 MoH; // 0x74
+    private Vector3 Mov; // 0x80
+    private BaseGroundDetection <Moy>k__BackingField; // 0x90
+    private bool <MoF>k__BackingField = false; // 0x98
+    private bool <MoI>k__BackingField = false; // 0x99
+    private Vector3 <Mow>k__BackingField; // 0x9C
+    private Vector3 <MoY>k__BackingField; // 0xA8
+    private bool <Moc>k__BackingField = false; // 0xB4
+    private Rigidbody <Mox>k__BackingField; // 0xB8
+
+  --- PROPERTIES ---
+    public float Ugb { get; set; }
+    public float Ugm { get; set; }
+    public float UgN { get; set; }
+    public bool Ugj { get; set; }
+    public Vector3 UgT { get; set; }
+    public bool UgP { get; set; }
+    public float UgL { get; set; }
+    public float UgR { get; set; }
+    public bool UgB { get; set; }
+    public float UgZ { get; set; }
+    public CapsuleCollider Ugf { get; }
+    private BaseGroundDetection Moy { get; set; }
+    public Vector3 UgD { get; }
+    public Vector3 UgO { get; }
+    public Vector3 Ugq { get; }
+    ... and 30 more properties
+
+  --- KEY METHODS (RVA & SIGNATURES) ---
+    // RVA: 0x69B186D Offset: 0x69AD86D VA: 0x69B186D
+      -> public void kYO(float E) { }
+    // RVA: 0x69B187F Offset: 0x69AD87F VA: 0x69B187F
+      -> public bool kcz() { }
+    // RVA: 0x69B1898 Offset: 0x69AD898 VA: 0x69B1898
+      -> private void knt(ref Vector3 E, ref Quaternion z) { }
+    // RVA: 0x69B1C34 Offset: 0x69ADC34 VA: 0x69B1C34
+      -> public void kcD(float E, float z) { }
+    // RVA: 0x69AE8B9 Offset: 0x69AA8B9 VA: 0x69AE8B9
+      -> public bool kcg(float E) { }
+    // RVA: 0x69B1F89 Offset: 0x69ADF89 VA: 0x69B1F89
+      -> public void kYT(bool E) { }
+    // RVA: 0x69B1F8E Offset: 0x69ADF8E VA: 0x69B1F8E
+      -> public void zUT(float E) { }
+    // RVA: 0x69A9948 Offset: 0x69A5948 VA: 0x69A9948
+      -> public void kcx() { }
+    // RVA: 0x69B205B Offset: 0x69AE05B VA: 0x69B205B
+      -> private void kmz() { }
+    // RVA: 0x69B2117 Offset: 0x69AE117 VA: 0x69B2117
+      -> public void kYL(Vector3 E) { }
+    // RVA: 0x69B2121 Offset: 0x69AE121 VA: 0x69B2121
+      -> public void Cd(bool E, bool z = true) { }
+    // RVA: 0x69B2291 Offset: 0x69AE291 VA: 0x69B2291
+      -> public float kYm() { }
+    // RVA: 0x69B2297 Offset: 0x69AE297 VA: 0x69B2297
+      -> public void YM() { }
+    // RVA: 0x69B229C Offset: 0x69AE29C VA: 0x69B229C
+      -> public void kqD(float E) { }
+    // RVA: 0x69B2369 Offset: 0x69AE369 VA: 0x69B2369
+      -> public void kBK() { }
+    // RVA: 0x69B236E Offset: 0x69AE36E VA: 0x69B236E
+      -> private void Hy(Vector3 E, float z, bool k) { }
+    // RVA: 0x69B2E8D Offset: 0x69AEE8D VA: 0x69B2E8D
+      -> private void hrE() { }
+    // RVA: 0x69B345F Offset: 0x69AF45F VA: 0x69B345F
+      -> public void TQ(Vector3 direction, float angularSpeed, bool onlyLateral = true) { }
+    // RVA: 0x69B364C Offset: 0x69AF64C VA: 0x69B364C
+      -> public void heu() { }
+    // RVA: 0x69AE7FC Offset: 0x69AA7FC VA: 0x69AE7FC
+      -> public void kcO(float E) { }
+    // RVA: 0x69B365D Offset: 0x69AF65D VA: 0x69B365D
+      -> public Collider kYc() { }
+    // RVA: 0x69B3676 Offset: 0x69AF676 VA: 0x69B3676
+      -> private void kBm() { }
+    // RVA: 0x69A767C Offset: 0x69A367C VA: 0x69A767C
+      -> public Quaternion kcb() { }
+    // RVA: 0x69B3A3D Offset: 0x69AFA3D VA: 0x69B3A3D
+      -> public Rigidbody kcR() { }
+    // RVA: 0x69B3A45 Offset: 0x69AFA45 VA: 0x69B3A45
+      -> public void hjv(bool E, bool z = true) { }
+    ... total methods: 187
+
+
+***********************************************************************************************
+CLASS / STRUCT: PlayerWeapon
+***********************************************************************************************
+  public class PlayerWeapon : NetworkBehaviour, NativeArray<float>, NativeArray<float> // TypeDefIndex: 1839
+  {
+
+  --- KEY FIELDS & OFFSETS ---
+    public const int MAX_PENETRATION_TARGETS;
+    private const float McV;
+    private float MxE; // 0x68
+    private int Mxz; // 0x6C
+    private bool Mxk = false; // 0x70
+    private float Mxh; // 0x74
+    private readonly SyncList<WeaponModData> Mxi; // 0x78
+    private Action<List<WeaponModData>> Mxa; // 0x80
+    private CancellationTokenSource Mxt; // 0x88
+    private bool <Mxp>k__BackingField = false; // 0x90
+    private lE Mxr; // 0x98
+    private bool MxW = false; // 0xA0
+    private SkinVisualHandle MxG; // 0xA8
+    private WeaponPiece Mxs; // 0xB8
+    private Action MxJ; // 0xC8
+    private int Mxn; // 0xD0
+    private bool MxQ = false; // 0xD4
+    private const float MxM;
+    private const float Mxl;
+    public static string[] obfuscatedKeys; // 0x0
+    public Animator animator; // 0xD8
+    private fG playerWeaponViewReference; // 0xE0
+    private PlayerFPWeaponView playerFPWeaponView; // 0xE8
+    private LayerMask shotMask; // 0xF0
+    private FPManager fPManager; // 0xF8
+    private float MxS; // 0x100
+    private float MxA; // 0x104
+    private short Mxo; // 0x108
+    private bool MxX = false; // 0x10A
+    private WeaponPiece MxK; // 0x110
+    private WeaponState MxU; // 0x120
+    private int Mxe; // 0x124
+    private bool MxC = false; // 0x128
+    private int Mxb; // 0x12C
+    private int Mxm; // 0x130
+    private PlayerManager <player>k__BackingField; // 0x138
+    private const float MxN;
+    private int Mxj; // 0x140
+    private float MxT; // 0x144
+    private float MxP; // 0x148
+    public Action<bool, bool> _Mirror_SyncVarHookDelegate__loaded; // 0x150
+    public Action<WeaponPiece, WeaponPiece> _Mirror_SyncVarHookDelegate__weaponPiece; // 0x158
+    public Action<WeaponState, WeaponState> _Mirror_SyncVarHookDelegate__weaponState; // 0x160
+
+  --- PROPERTIES ---
+    private bool Uwh { get; }
+    public bool UdV { get; set; }
+    public Animator Udw { get; set; }
+    public fG UdY { get; set; }
+    public PlayerManager player { get; set; }
+    public int Udc { get; set; }
+    public WeaponAnimationConfig UwE { get; }
+    public bool Udx { get; }
+    public short Uwz { get; }
+    public FPObject Uwk { get; }
+    public short Uwi { get; set; }
+    public bool Uwa { get; set; }
+    public WeaponPiece Uwt { get; set; }
+    public WeaponState Uwp { get; set; }
+    public int Uwr { get; set; }
+    ... and 1 more properties
+
+  --- KEY METHODS (RVA & SIGNATURES) ---
+    // RVA: 0x711E1EF Offset: 0x711A1EF VA: 0x711E1EF
+      -> private void hdm() { }
+    // RVA: 0x711E7CA Offset: 0x711A7CA VA: 0x711E7CA
+      -> protected static void hwu(NetworkBehaviour E, NetworkReader z, NetworkConnectionToClient k) { }
+    // RVA: 0x711ED8F Offset: 0x711AD8F VA: 0x711ED8F
+      -> private void hIR(GameObject E, GameObject z) { }
+    // RVA: 0x711EE72 Offset: 0x711AE72 VA: 0x711EE72
+      -> protected void mS(int E, Vector3 z, Quaternion k, int h) { }
+    // RVA: 0x711EE73 Offset: 0x711AE73 VA: 0x711EE73
+      -> private TriggerPullOutcome hIo(MF E) { }
+    // RVA: 0x711EF67 Offset: 0x711AF67 VA: 0x711EF67
+      -> private void hPD(Item E) { }
+    // RVA: 0x711EFBE Offset: 0x711AFBE VA: 0x711EFBE
+      -> protected static void hRp(NetworkBehaviour E, NetworkReader z, NetworkConnectionToClient k) { }
+    // RVA: 0x711F101 Offset: 0x711B101 VA: 0x711F101 Slot: 35
+      -> public bool hFu() { }
+    // RVA: 0x711F104 Offset: 0x711B104 VA: 0x711F104
+      -> protected void hAr(int E, bool z, WeaponModType k) { }
+    // RVA: 0x711F715 Offset: 0x711B715 VA: 0x711F715
+      -> private void set_player(PlayerManager value) { }
+    // RVA: 0x711F728 Offset: 0x711B728 VA: 0x711F728
+      -> protected void UL(WeaponPiece E) { }
+    // RVA: 0x711F837 Offset: 0x711B837 VA: 0x711F837
+      -> private void is() { }
+    // RVA: 0x711F8BE Offset: 0x711B8BE VA: 0x711F8BE
+      -> protected static void zWD(NetworkBehaviour E, NetworkReader z, NetworkConnectionToClient k) { }
+    // RVA: 0x711FEED Offset: 0x711BEED VA: 0x711FEED
+      -> protected void xU(WeaponPiece E) { }
+    // RVA: 0x711FF35 Offset: 0x711BF35 VA: 0x711FF35
+      -> protected void hdx() { }
+    // RVA: 0x711FF36 Offset: 0x711BF36 VA: 0x711FF36
+      -> private void hdC(string E) { }
+    // RVA: 0x711FFF2 Offset: 0x711BFF2 VA: 0x711FFF2
+      -> protected void hUf(int E, bool z) { }
+    // RVA: 0x7120577 Offset: 0x711C577 VA: 0x7120577
+      -> protected static void cK(NetworkBehaviour E, NetworkReader z, NetworkConnectionToClient k) { }
+    // RVA: 0x71206F7 Offset: 0x711C6F7 VA: 0x71206F7
+      -> private void hds(WeaponPiece E, WeaponPiece z) { }
+    // RVA: 0x71206F8 Offset: 0x711C6F8 VA: 0x71206F8
+      -> protected void kSc() { }
+    // RVA: 0x71206F9 Offset: 0x711C6F9 VA: 0x71206F9
+      -> private void hdT() { }
+    // RVA: 0x712070D Offset: 0x711C70D VA: 0x712070D
+      -> protected void kxK(WeaponPiece E, string z) { }
+    // RVA: 0x7120916 Offset: 0x711C916 VA: 0x7120916
+      -> private void zKN() { }
+    // RVA: 0x712099D Offset: 0x711C99D VA: 0x712099D
+      -> private void hIC(float E, int z) { }
+    // RVA: 0x7120A67 Offset: 0x711CA67 VA: 0x7120A67 Slot: 57
+      -> public void hIr(int E, bool z) { }
+    ... total methods: 350
+
+
+***********************************************************************************************
+CLASS / STRUCT: HitscanWeaponConfig
+***********************************************************************************************
+  public class HitscanWeaponConfig : ScriptableObject // TypeDefIndex: 1833
+  {
+
+  --- KEY FIELDS & OFFSETS ---
+    private float damage; // 0x18
+    private Vector2 <MaxDamageOnDistance>k__BackingField; // 0x1C
+    private Vector2 <MinDamageOnDistance>k__BackingField; // 0x24
+    private float <MaxDistance>k__BackingField; // 0x2C
+    private float <BulletSpeed>k__BackingField; // 0x30
+    private float fireRate; // 0x34
+    private int projectilesPerShot; // 0x38
+    private float <BaseDispersion>k__BackingField; // 0x3C
+    private float mobility; // 0x40
+    private bool <HasFullReload>k__BackingField = false; // 0x44
+    private bool <HasLoopReload>k__BackingField = false; // 0x45
+    private float <FullReloadPeriod>k__BackingField; // 0x48
+    private float <LoopReloadPeriod>k__BackingField; // 0x4C
+    private bool needPrepareEveryShot = false; // 0x50
+    private bool suppressReloadWhileAimed = false; // 0x51
+    private bool suppressed = false; // 0x52
+    private float misfireChance; // 0x54
+    private float misfireChanceFalloff; // 0x58
+    private DispersionConfig dispersionConfig; // 0x60
+    private RecoilConfig recoilConfig; // 0x68
+
+  --- PROPERTIES ---
+    public Vector2 MaxDamageOnDistance { get; set; }
+    public Vector2 MinDamageOnDistance { get; set; }
+    public float MaxDistance { get; set; }
+    public float BulletSpeed { get; set; }
+    public float BaseDispersion { get; set; }
+    public bool HasFullReload { get; set; }
+    public bool HasLoopReload { get; set; }
+    public float FullReloadPeriod { get; set; }
+    public float LoopReloadPeriod { get; set; }
+    public DispersionConfig UdZ { get; }
+    public RecoilConfig Udf { get; }
+    public float UdD { get; }
+    public float UdO { get; }
+    public float Udq { get; }
+    public float Udu { get; }
+    ... and 6 more properties
+
+  --- KEY METHODS (RVA & SIGNATURES) ---
+    // RVA: 0x713BBAE Offset: 0x7137BAE VA: 0x713BBAE
+      -> public float iU(int E) { }
+    // RVA: 0x713BBF0 Offset: 0x7137BF0 VA: 0x713BBF0
+      -> public bool hFl() { }
+    // RVA: 0x713BBF4 Offset: 0x7137BF4 VA: 0x713BBF4
+      -> public float get_BulletSpeed() { }
+    // RVA: 0x713BBFA Offset: 0x7137BFA VA: 0x713BBFA
+      -> private void set_MinDamageOnDistance(Vector2 value) { }
+    // RVA: 0x713BBFF Offset: 0x7137BFF VA: 0x713BBFF
+      -> public RecoilConfig hFW() { }
+    // RVA: 0x713BC04 Offset: 0x7137C04 VA: 0x713BC04
+      -> public Vector2 get_MinDamageOnDistance() { }
+    // RVA: 0x713BC0A Offset: 0x7137C0A VA: 0x713BC0A
+      -> private void set_MaxDamageOnDistance(Vector2 value) { }
+    // RVA: 0x713BC0F Offset: 0x7137C0F VA: 0x713BC0F
+      -> public bool hFA() { }
+    // RVA: 0x713BC13 Offset: 0x7137C13 VA: 0x713BC13
+      -> private float VJ() { }
+    // RVA: 0x713BC2F Offset: 0x7137C2F VA: 0x713BC2F
+      -> public float hFn() { }
+    // RVA: 0x713BC3D Offset: 0x7137C3D VA: 0x713BC3D
+      -> private void set_BulletSpeed(float value) { }
+    // RVA: 0x713BC43 Offset: 0x7137C43 VA: 0x713BC43
+      -> public float hFJ() { }
+    // RVA: 0x713BC49 Offset: 0x7137C49 VA: 0x713BC49
+      -> public float get_FullReloadPeriod() { }
+    // RVA: 0x713BC4F Offset: 0x7137C4F VA: 0x713BC4F
+      -> public int hFM() { }
+    // RVA: 0x713BC53 Offset: 0x7137C53 VA: 0x713BC53
+      -> public void .ctor() { }
+    // RVA: 0x713BC68 Offset: 0x7137C68 VA: 0x713BC68
+      -> public Vector2 get_MaxDamageOnDistance() { }
+    // RVA: 0x713BC6E Offset: 0x7137C6E VA: 0x713BC6E
+      -> public float get_LoopReloadPeriod() { }
+    // RVA: 0x713BC74 Offset: 0x7137C74 VA: 0x713BC74
+      -> private void set_FullReloadPeriod(float value) { }
+    // RVA: 0x713BC7A Offset: 0x7137C7A VA: 0x713BC7A
+      -> public float get_MaxDistance() { }
+    // RVA: 0x713BC80 Offset: 0x7137C80 VA: 0x713BC80
+      -> private void set_HasFullReload(bool value) { }
+    // RVA: 0x713BC85 Offset: 0x7137C85 VA: 0x713BC85
+      -> private void set_MaxDistance(float value) { }
+    // RVA: 0x713BC8B Offset: 0x7137C8B VA: 0x713BC8B
+      -> public float hFs() { }
+    // RVA: 0x713BCC3 Offset: 0x7137CC3 VA: 0x713BCC3
+      -> private void set_HasLoopReload(bool value) { }
+    // RVA: 0x713BCC8 Offset: 0x7137CC8 VA: 0x713BCC8
+      -> public float hFQ() { }
+    // RVA: 0x713BCDE Offset: 0x7137CDE VA: 0x713BCDE
+      -> public float hFG() { }
+    ... total methods: 37
+
+
+***********************************************************************************************
+CLASS / STRUCT: RecoilConfig
+***********************************************************************************************
+  public class RecoilConfig : ScriptableObject // TypeDefIndex: 1842
+  {
+
+  --- KEY FIELDS & OFFSETS ---
+    private Vector2 <MinRecoil>k__BackingField; // 0x18
+    private Vector2 <MaxRecoil>k__BackingField; // 0x20
+    private float <MinSideDelta>k__BackingField; // 0x28
+    private float <MaxSideDelta>k__BackingField; // 0x2C
+    private float <RecoilAimMultiplier>k__BackingField; // 0x30
+    private float <RecoilTime>k__BackingField; // 0x34
+    private float <RecoilDecreaseSpeedFire>k__BackingField; // 0x38
+    private float <RecoilDecreaseSpeedIdle>k__BackingField; // 0x3C
+    private float <RecoilApplySpeed>k__BackingField; // 0x40
+
+  --- PROPERTIES ---
+    public Vector2 MinRecoil { get; set; }
+    public Vector2 MaxRecoil { get; set; }
+    public float MinSideDelta { get; set; }
+    public float MaxSideDelta { get; set; }
+    public float RecoilAimMultiplier { get; set; }
+    public float RecoilTime { get; set; }
+    public float RecoilDecreaseSpeedFire { get; set; }
+    public float RecoilDecreaseSpeedIdle { get; set; }
+    public float RecoilApplySpeed { get; set; }
+
+  --- KEY METHODS (RVA & SIGNATURES) ---
+    // RVA: 0x713C5EA Offset: 0x71385EA VA: 0x713C5EA
+      -> public Vector2 get_MinRecoil() { }
+    // RVA: 0x713C5F0 Offset: 0x71385F0 VA: 0x713C5F0
+      -> private void set_MinRecoil(Vector2 value) { }
+    // RVA: 0x713C5F5 Offset: 0x71385F5 VA: 0x713C5F5
+      -> public Vector2 get_MaxRecoil() { }
+    // RVA: 0x713C5FB Offset: 0x71385FB VA: 0x713C5FB
+      -> private void set_MaxRecoil(Vector2 value) { }
+    // RVA: 0x713C600 Offset: 0x7138600 VA: 0x713C600
+      -> public float get_MinSideDelta() { }
+    // RVA: 0x713C606 Offset: 0x7138606 VA: 0x713C606
+      -> private void set_MinSideDelta(float value) { }
+    // RVA: 0x713C60C Offset: 0x713860C VA: 0x713C60C
+      -> public float get_MaxSideDelta() { }
+    // RVA: 0x713C612 Offset: 0x7138612 VA: 0x713C612
+      -> private void set_MaxSideDelta(float value) { }
+    // RVA: 0x713C618 Offset: 0x7138618 VA: 0x713C618
+      -> public float get_RecoilAimMultiplier() { }
+    // RVA: 0x713C61E Offset: 0x713861E VA: 0x713C61E
+      -> private void set_RecoilAimMultiplier(float value) { }
+    // RVA: 0x713C624 Offset: 0x7138624 VA: 0x713C624
+      -> public float get_RecoilTime() { }
+    // RVA: 0x713C62A Offset: 0x713862A VA: 0x713C62A
+      -> private void set_RecoilTime(float value) { }
+    // RVA: 0x713C630 Offset: 0x7138630 VA: 0x713C630
+      -> public float get_RecoilDecreaseSpeedFire() { }
+    // RVA: 0x713C636 Offset: 0x7138636 VA: 0x713C636
+      -> private void set_RecoilDecreaseSpeedFire(float value) { }
+    // RVA: 0x713C63C Offset: 0x713863C VA: 0x713C63C
+      -> public float get_RecoilDecreaseSpeedIdle() { }
+    // RVA: 0x713C642 Offset: 0x7138642 VA: 0x713C642
+      -> private void set_RecoilDecreaseSpeedIdle(float value) { }
+    // RVA: 0x713C648 Offset: 0x7138648 VA: 0x713C648
+      -> public float get_RecoilApplySpeed() { }
+    // RVA: 0x713C64E Offset: 0x713864E VA: 0x713C64E
+      -> private void set_RecoilApplySpeed(float value) { }
+    // RVA: 0x713C654 Offset: 0x7138654 VA: 0x713C654
+      -> public void .ctor() { }
+
+
+***********************************************************************************************
+CLASS / STRUCT: DispersionConfig
+***********************************************************************************************
+  public class DispersionConfig : ScriptableObject // TypeDefIndex: 1832
+  {
+
+  --- KEY FIELDS & OFFSETS ---
+    private float minFireDispersion; // 0x18
+    private float maxFireDispersion; // 0x1C
+    private float minDispersion; // 0x20
+    private float maxDispersion; // 0x24
+    private float dispersionIncreasePerShot; // 0x28
+    private float dispersionDecreaseRate; // 0x2C
+    private float <MoveScale>k__BackingField; // 0x30
+    private float <BaseDispersionAimFactor>k__BackingField; // 0x34
+    private float <MoveDispersionAimFactor>k__BackingField; // 0x38
+    private float <FireDispersionAimFactor>k__BackingField; // 0x3C
+
+  --- PROPERTIES ---
+    public float MoveScale { get; set; }
+    public float BaseDispersionAimFactor { get; set; }
+    public float MoveDispersionAimFactor { get; set; }
+    public float FireDispersionAimFactor { get; set; }
+    public float Udj { get; }
+    public float UdT { get; }
+    public float UdP { get; }
+    public float UdL { get; }
+    public float UdR { get; }
+    public float UdB { get; }
+
+  --- KEY METHODS (RVA & SIGNATURES) ---
+    // RVA: 0x713BB3B Offset: 0x7137B3B VA: 0x713BB3B
+      -> public float get_MoveScale() { }
+    // RVA: 0x713BB41 Offset: 0x7137B41 VA: 0x713BB41
+      -> private void set_MoveScale(float value) { }
+    // RVA: 0x713BB47 Offset: 0x7137B47 VA: 0x713BB47
+      -> public float get_BaseDispersionAimFactor() { }
+    // RVA: 0x713BB4D Offset: 0x7137B4D VA: 0x713BB4D
+      -> private void set_BaseDispersionAimFactor(float value) { }
+    // RVA: 0x713BB53 Offset: 0x7137B53 VA: 0x713BB53
+      -> public float get_MoveDispersionAimFactor() { }
+    // RVA: 0x713BB59 Offset: 0x7137B59 VA: 0x713BB59
+      -> private void set_MoveDispersionAimFactor(float value) { }
+    // RVA: 0x713BB5F Offset: 0x7137B5F VA: 0x713BB5F
+      -> public float get_FireDispersionAimFactor() { }
+    // RVA: 0x713BB65 Offset: 0x7137B65 VA: 0x713BB65
+      -> private void set_FireDispersionAimFactor(float value) { }
+    // RVA: 0x713BB6B Offset: 0x7137B6B VA: 0x713BB6B
+      -> public float hFk() { }
+    // RVA: 0x713BB71 Offset: 0x7137B71 VA: 0x713BB71
+      -> public float hFh() { }
+    // RVA: 0x713BB77 Offset: 0x7137B77 VA: 0x713BB77
+      -> public float hFi() { }
+    // RVA: 0x713BB7D Offset: 0x7137B7D VA: 0x713BB7D
+      -> public float hFa() { }
+    // RVA: 0x713BB83 Offset: 0x7137B83 VA: 0x713BB83
+      -> public float hFt() { }
+    // RVA: 0x713BB89 Offset: 0x7137B89 VA: 0x713BB89
+      -> public float hFp() { }
+    // RVA: 0x713BB8F Offset: 0x7137B8F VA: 0x713BB8F
+      -> public void .ctor() { }
+
+
+***********************************************************************************************
+CLASS / STRUCT: WeaponBase
+***********************************************************************************************
+  public class WeaponBase : MonoBehaviour // TypeDefIndex: 625
+  {
+
+  --- KEY FIELDS & OFFSETS ---
+    protected AudioSource m_AudioSource; // 0x20
+    protected AudioSource m_TailAudioSource; // 0x28
+    protected WeaponAudioConfig audioConfig; // 0x30
+    private MultiLayerShotConfig m_ShotConfig; // 0x38
+    private ParticleSystem m_MuzzleFlash; // 0x40
+    private BulletProjectile bulletTracerPrefab; // 0x48
+    private bool spawnTracer = false; // 0x50
+    private float minTracerDistance; // 0x54
+    private Animator <Animator>k__BackingField; // 0x58
+    private RuntimeAnimatorController <TPAnimatorController>k__BackingField; // 0x60
+    private WeaponAnimationConfig <AnimationConfig>k__BackingField; // 0x68
+    private FPWeaponEventHandler <FPWeaponEventHandler>k__BackingField; // 0x70
+    private WeaponModsHandler <WeaponModsHandler>k__BackingField; // 0x78
+    private bool <MainHand>k__BackingField = false; // 0x80
+    private Transform <RightHandPivot>k__BackingField; // 0x88
+    private Transform <LeftHandPivot>k__BackingField; // 0x90
+    private Transform <ShellSpawnPoint>k__BackingField; // 0x98
+    private Transform <MuzzlePoint>k__BackingField; // 0xA0
+    private byte <MWO>k__BackingField; // 0xA8
+    private short <MWq>k__BackingField; // 0xAA
+    private Transform defaultADSPoint; // 0xB0
+    private WeaponSkinShotAudio MWu; // 0xB8
+    private bool MWg = false; // 0xC0
+
+  --- PROPERTIES ---
+    public MultiLayerShotConfig Uqr { get; }
+    public Animator Animator { get; set; }
+    public RuntimeAnimatorController TPAnimatorController { get; set; }
+    public WeaponAnimationConfig AnimationConfig { get; set; }
+    public FPWeaponEventHandler FPWeaponEventHandler { get; set; }
+    public WeaponModsHandler WeaponModsHandler { get; set; }
+    public bool MainHand { get; set; }
+    public Transform RightHandPivot { get; set; }
+    public Transform LeftHandPivot { get; set; }
+    public Transform ShellSpawnPoint { get; set; }
+    public Transform MuzzlePoint { get; set; }
+    public byte MWO { get; set; }
+    public short MWq { get; set; }
+    public Transform UqW { get; }
+    public ParticleSystem UqG { get; }
+    ... and 2 more properties
+
+  --- KEY METHODS (RVA & SIGNATURES) ---
+    // RVA: 0x63404C6 Offset: 0x633C4C6 VA: 0x63404C6
+      -> public void kLg(short E) { }
+    // RVA: 0x63404CE Offset: 0x633C4CE VA: 0x63404CE
+      -> protected void set_FPWeaponEventHandler(FPWeaponEventHandler value) { }
+    // RVA: 0x63404DB Offset: 0x633C4DB VA: 0x63404DB
+      -> public void TJ() { }
+    // RVA: 0x634056E Offset: 0x633C56E VA: 0x634056E
+      -> private WeaponSkinShotAudio zdr() { }
+    // RVA: 0x63405E3 Offset: 0x633C5E3 VA: 0x63405E3
+      -> protected void set_TPAnimatorController(RuntimeAnimatorController value) { }
+    // RVA: 0x63405F0 Offset: 0x633C5F0 VA: 0x63405F0
+      -> protected void set_WeaponModsHandler(WeaponModsHandler value) { }
+    // RVA: 0x63405FD Offset: 0x633C5FD VA: 0x63405FD
+      -> public Transform get_MuzzlePoint() { }
+    // RVA: 0x6340605 Offset: 0x633C605 VA: 0x6340605
+      -> public Transform get_LeftHandPivot() { }
+    // RVA: 0x634060D Offset: 0x633C60D VA: 0x634060D
+      -> public Animator get_Animator() { }
+    // RVA: 0x6340612 Offset: 0x633C612 VA: 0x6340612 Slot: 4
+      -> public virtual void kLd(Vector3 E, float z) { }
+    // RVA: 0x63408CA Offset: 0x633C8CA VA: 0x63408CA
+      -> protected void set_MainHand(bool value) { }
+    // RVA: 0x63408D2 Offset: 0x633C8D2 VA: 0x63408D2
+      -> public float kLc(WeaponModEffectType E) { }
+    // RVA: 0x63408EB Offset: 0x633C8EB VA: 0x63408EB
+      -> public void .ctor() { }
+    // RVA: 0x63408F9 Offset: 0x633C8F9 VA: 0x63408F9
+      -> protected void set_RightHandPivot(Transform value) { }
+    // RVA: 0x634090C Offset: 0x633C90C VA: 0x634090C
+      -> public void kRE() { }
+    // RVA: 0x634099A Offset: 0x633C99A VA: 0x634099A
+      -> public void PlayInsertBulletSound() { }
+    // RVA: 0x6340A28 Offset: 0x633CA28 VA: 0x6340A28
+      -> public byte kLO() { }
+    // RVA: 0x6340A2F Offset: 0x633CA2F VA: 0x6340A2F
+      -> public Transform get_ShellSpawnPoint() { }
+    // RVA: 0x6340A37 Offset: 0x633CA37 VA: 0x6340A37
+      -> public void kXG() { }
+    // RVA: 0x63408C5 Offset: 0x633C8C5 VA: 0x63408C5
+      -> public WeaponSkinShotAudio kLF() { }
+    // RVA: 0x6340B3F Offset: 0x633CB3F VA: 0x6340B3F
+      -> public void kRz() { }
+    // RVA: 0x6340BC8 Offset: 0x633CBC8 VA: 0x6340BC8
+      -> protected void set_Animator(Animator value) { }
+    // RVA: 0x6340BD5 Offset: 0x633CBD5 VA: 0x6340BD5
+      -> private WeaponSkinShotAudio Oc() { }
+    // RVA: 0x6340C4A Offset: 0x633CC4A VA: 0x6340C4A
+      -> public short kLu() { }
+    // RVA: 0x6340C52 Offset: 0x633CC52 VA: 0x6340C52
+      -> public void zxF() { }
+    ... total methods: 57
+
+
+***********************************************************************************************
+CLASS / STRUCT: WeaponMachineGun
+***********************************************************************************************
+  public class WeaponMachineGun : WeaponBase // TypeDefIndex: 1420
+  {
+
+  --- KEY FIELDS & OFFSETS ---
+    public GameObject[] bullets; // 0xC8
+
+  --- KEY METHODS (RVA & SIGNATURES) ---
+    // RVA: 0x7007D52 Offset: 0x7003D52 VA: 0x7007D52
+      -> public void .ctor() { }
+
+
+***********************************************************************************************
+CLASS / STRUCT: WeaponBow
+***********************************************************************************************
+  public class WeaponBow : WeaponBase // TypeDefIndex: 626
+  {
+
+  --- KEY FIELDS & OFFSETS ---
+    private SkinnedMeshRenderer bowRenderer; // 0xC8
+    private SkinnedMeshRenderer bowWorldRenderer; // 0xD0
+    private BlendShapeHandler MWH; // 0xD8
+    private bool MWv = false; // 0xE0
+
+  --- KEY METHODS (RVA & SIGNATURES) ---
+    // RVA: 0x634159C Offset: 0x633D59C VA: 0x634159C
+      -> private void OnEnable() { }
+    // RVA: 0x63416B7 Offset: 0x633D6B7 VA: 0x63416B7
+      -> private void kCY() { }
+    // RVA: 0x63417D2 Offset: 0x633D7D2 VA: 0x63417D2
+      -> public void .ctor() { }
+    // RVA: 0x63417E0 Offset: 0x633D7E0 VA: 0x63417E0
+      -> private void Update() { }
+
+
+***********************************************************************************************
+CLASS / STRUCT: WeaponCrossbow
+***********************************************************************************************
+  public class WeaponCrossbow : WeaponBase // TypeDefIndex: 632
+  {
+
+  --- KEY FIELDS & OFFSETS ---
+    private SkinnedMeshRenderer bowRenderer; // 0xC8
+    private SkinnedMeshRenderer bowWorldRenderer; // 0xD0
+    private float loadedBlendShapeWeight; // 0xD8
+    private float unloadedBlendShapeWeight; // 0xDC
+    public GameObject arrow; // 0xE0
+    public GameObject arrowWorld; // 0xE8
+
+  --- KEY METHODS (RVA & SIGNATURES) ---
+    // RVA: 0x6346E13 Offset: 0x6342E13 VA: 0x6346E13 Slot: 6
+      -> public override void kLw(bool E) { }
+    // RVA: 0x6346F77 Offset: 0x6342F77 VA: 0x6346F77 Slot: 5
+      -> public override void kLI() { }
+    // RVA: 0x6346F99 Offset: 0x6342F99 VA: 0x6346F99
+      -> private void NX() { }
+    // RVA: 0x6346FAE Offset: 0x6342FAE VA: 0x6346FAE
+      -> public void .ctor() { }
+    // RVA: 0x6346FC6 Offset: 0x6342FC6 VA: 0x6346FC6
+      -> private void wl() { }
+    // RVA: 0x6346FDB Offset: 0x6342FDB VA: 0x6346FDB
+      -> private void hke() { }
+    // RVA: 0x6346FF0 Offset: 0x6342FF0 VA: 0x6346FF0
+      -> private void uJ() { }
+    // RVA: 0x6347005 Offset: 0x6343005 VA: 0x6347005
+      -> private void OnDisable() { }
+
+
+***********************************************************************************************
+CLASS / STRUCT: WeaponRocketLauncher
+***********************************************************************************************
+  public class WeaponRocketLauncher : WeaponBase // TypeDefIndex: 633
+  {
+
+  --- KEY FIELDS & OFFSETS ---
+    public GameObject rocket; // 0xC8
+    public GameObject rocketWorld; // 0xD0
+    public GameObject smoke; // 0xD8
+
+  --- KEY METHODS (RVA & SIGNATURES) ---
+    // RVA: 0x634701A Offset: 0x634301A VA: 0x634701A Slot: 5
+      -> public override void kLI() { }
+    // RVA: 0x6347143 Offset: 0x6343143 VA: 0x6347143 Slot: 6
+      -> public override void kLw(bool E) { }
+    // RVA: 0x6347209 Offset: 0x6343209 VA: 0x6347209
+      -> public void .ctor() { }
+
+
+***********************************************************************************************
+CLASS / STRUCT: HelicopterController
+***********************************************************************************************
+  public class HelicopterController : NetworkBehaviour // TypeDefIndex: 345
+  {
+
+  --- KEY FIELDS & OFFSETS ---
+    public AudioClip helicopterSound; // 0x68
+    public Rigidbody HelicopterModel; // 0x70
+    public iQ MainRotorController; // 0x78
+    public iQ SubRotorController; // 0x80
+    public float MaxEngineForce; // 0x88
+    public float TurnForce; // 0x8C
+    public float ForwardForce; // 0x90
+    public float ForwardTiltForce; // 0x94
+    public float TurnTiltForce; // 0x98
+    public float EffectiveHeight; // 0x9C
+    public float turnTiltForcePercent; // 0xA0
+    public float turnForcePercent; // 0xA4
+    private SoundPlayer _warningSound; // 0xA8
+    private SoundPlayer _shutdownClickSound; // 0xB0
+    private WheelCollider[] m_WheelColliders; // 0xB8
+    private Collider[] m_ParkingColliders; // 0xC0
+    private GameObject[] m_WheelMeshes; // 0xC8
+    private GameObject[] m_WheelSupports; // 0xD0
+    private Vector3 m_CentreOfMassOffset; // 0xD8
+    public bool IsOnGround = false; // 0xE4
+    public float volume; // 0xE8
+    private float _reportSoundEnginePower; // 0xEC
+    private float Mzm; // 0xF0
+    private float MzN; // 0xF4
+    private float Mzj; // 0xF8
+    private float MzT; // 0xFC
+    private bool MzP = false; // 0x100
+    private Vector2 MzL; // 0x104
+    private Vector2 MzR; // 0x10C
+    private float MzB; // 0x114
+    private bool MzZ = false; // 0x118
+    private float <Mzf>k__BackingField; // 0x11C
+    private float <MzD>k__BackingField; // 0x120
+    private float <MzO>k__BackingField; // 0x124
+    private float <Mzq>k__BackingField; // 0x128
+    private AudioSource Mzu; // 0x130
+    private AudioSource Mzg; // 0x138
+    private HelicopterController.NoFlyZoneState MzH; // 0x140
+    private float Mzv; // 0x144
+    public bool KinematicControlled = false; // 0x148
+    public Action<float, float> KinematicTiltInput; // 0x150
+    public Action<HelicopterController.NoFlyZoneState, HelicopterController.NoFlyZoneState> _Mirror_SyncVarHookDelegate__noFlyZoneState; // 0x158
+
+  --- PROPERTIES ---
+    public bool UDu { get; }
+    public float UDg { get; set; }
+    public float Mzf { get; set; }
+    public float MzD { get; set; }
+    public float MzO { get; set; }
+    public float Mzq { get; set; }
+    public bool UDH { get; }
+    public bool UDv { get; }
+    public bool UDy { get; }
+    public HelicopterController.NoFlyZoneState UDF { get; set; }
+
+  --- KEY METHODS (RVA & SIGNATURES) ---
+    // RVA: 0x5D62808 Offset: 0x5D5E808 VA: 0x5D62808 Slot: 17
+      -> public override bool Weaved() { }
+    // RVA: 0x5D6280B Offset: 0x5D5E80B VA: 0x5D6280B
+      -> public bool klK() { }
+    // RVA: 0x5D62812 Offset: 0x5D5E812 VA: 0x5D62812
+      -> private void kjt() { }
+    // RVA: 0x5D62BCE Offset: 0x5D5EBCE VA: 0x5D62BCE
+      -> public void kSt([In] HelicopterController.NoFlyZoneState E) { }
+    // RVA: 0x5D62C21 Offset: 0x5D5EC21 VA: 0x5D62C21
+      -> public void zYD(float E) { }
+    // RVA: 0x5D62C2A Offset: 0x5D5EC2A VA: 0x5D62C2A
+      -> private void fg() { }
+    // RVA: 0x5D62DAC Offset: 0x5D5EDAC VA: 0x5D62DAC
+      -> public void klY(float E) { }
+    // RVA: 0x5D62DB5 Offset: 0x5D5EDB5 VA: 0x5D62DB5
+      -> private AudioSource klI(AudioClip E) { }
+    // RVA: 0x5D62ECB Offset: 0x5D5EECB VA: 0x5D62ECB
+      -> private void kSE(HelicopterController.NoFlyZoneState E, HelicopterController.NoFlyZoneState z) { }
+    // RVA: 0x5D62F40 Offset: 0x5D5EF40 VA: 0x5D62F40 Slot: 8
+      -> public override void DeserializeSyncVars(NetworkReader reader, bool initialState) { }
+    // RVA: 0x5D62FD5 Offset: 0x5D5EFD5 VA: 0x5D62FD5
+      -> private void klL(float E) { }
+    // RVA: 0x5D62FDE Offset: 0x5D5EFDE VA: 0x5D62FDE
+      -> public bool klR() { }
+    // RVA: 0x5D62FE9 Offset: 0x5D5EFE9 VA: 0x5D62FE9
+      -> public bool klB() { }
+    // RVA: 0x5D62FF8 Offset: 0x5D5EFF8 VA: 0x5D62FF8
+      -> private void zwH() { }
+    // RVA: 0x5D630AC Offset: 0x5D5F0AC VA: 0x5D630AC
+      -> private void ktI() { }
+    // RVA: 0x5D63E23 Offset: 0x5D5FE23 VA: 0x5D63E23
+      -> private void zya() { }
+    // RVA: 0x5D63CAF Offset: 0x5D5FCAF VA: 0x5D63CAF
+      -> private void klv() { }
+    // RVA: 0x5D63ED8 Offset: 0x5D5FED8 VA: 0x5D63ED8
+      -> private void kAc(HelicopterController.NoFlyZoneState E, HelicopterController.NoFlyZoneState z) { }
+    // RVA: 0x5D64148 Offset: 0x5D60148 VA: 0x5D64148
+      -> private void kEQ() { }
+    // RVA: 0x5D64214 Offset: 0x5D60214 VA: 0x5D64214
+      -> private void hih() { }
+    // RVA: 0x5D634B8 Offset: 0x5D5F4B8 VA: 0x5D634B8
+      -> private void klu() { }
+    // RVA: 0x5D644DE Offset: 0x5D604DE VA: 0x5D644DE
+      -> private void zJl() { }
+    // RVA: 0x5D6470A Offset: 0x5D6070A VA: 0x5D6470A
+      -> private void hKW() { }
+    // RVA: 0x5D647C1 Offset: 0x5D607C1 VA: 0x5D647C1
+      -> public void klV(HelicopterController.NoFlyZoneState E, float z = 0) { }
+    // RVA: 0x5D648E0 Offset: 0x5D608E0 VA: 0x5D648E0
+      -> private void hWL() { }
+    ... total methods: 116
+
+
+***********************************************************************************************
+CLASS / STRUCT: StorageContainer
+***********************************************************************************************
+  public class StorageContainer : InteractionComponent, SyncIDictionary.Change<object, object> // TypeDefIndex: 536
+  {
+
+  --- KEY METHODS (RVA & SIGNATURES) ---
+    // RVA: 0x6207FA9 Offset: 0x6203FA9 VA: 0x6207FA9
+      -> public void .ctor() { }
+
+
+***********************************************************************************************
+CLASS / STRUCT: BuildingGrade
+***********************************************************************************************
+  public class BuildingGrade : ScriptableObject // TypeDefIndex: 222
+  {
+
+  --- KEY FIELDS & OFFSETS ---
+    public BuildingGrade.Enum type; // 0x18
+    public float baseHealth; // 0x1C
+    public List<ItemAmount> baseCost; // 0x20
+    public ProtectionValues damageProtecton; // 0x28
+    public PhysicsMaterial physicMaterial; // 0x30
+    public SurfaceType surfaceType; // 0x38
+    public SoundPlayer m_UpgradeSound; // 0x40
+    public BuildingGrade.WeaponTypeDestroyEffects[] weaponTypeEffects; // 0x48
+    public GameObject fallbackDestroyEffect; // 0x50
+
+  --- KEY METHODS (RVA & SIGNATURES) ---
+    // RVA: 0x59E4284 Offset: 0x59E0284 VA: 0x59E4284
+      -> public void .ctor() { }
+
+
+***********************************************************************************************
+CLASS / STRUCT: Lock
+***********************************************************************************************
+  public class Lock : NetworkBehaviour // TypeDefIndex: 381
+  {
+
+  --- KEY FIELDS & OFFSETS ---
+    public const string KeyLockId;
+    public const string CodeLockId;
+    private Action Mko; // 0x68
+    private KeyLock m_Keylock; // 0x70
+    private CodeLock m_Codelock; // 0x78
+    private float m_InteractionThreeshold; // 0x80
+    private Lock.LockType m_LockByDefault; // 0x84
+    private KeyLock MkX; // 0x88
+    private float MkK; // 0x90
+    public int lockType; // 0x94
+    public bool locked = false; // 0x98
+
+  --- PROPERTIES ---
+    public KeyLock UDV { get; }
+    public int UOE { get; }
+    public List<string> UOz { get; }
+    public bool UOk { get; }
+    public Lock.LockType UOh { get; }
+    public int UOi { get; set; }
+    public bool UOa { get; set; }
+
+  --- KEY METHODS (RVA & SIGNATURES) ---
+    // RVA: 0x5D736CA Offset: 0x5D6F6CA VA: 0x5D736CA
+      -> public void zBR(string E, string z) { }
+    // RVA: 0x5D73A17 Offset: 0x5D6FA17 VA: 0x5D73A17
+      -> protected void Bj(string E) { }
+    // RVA: 0x5D73C0C Offset: 0x5D6FC0C VA: 0x5D73C0C
+      -> public void kAF(string E) { }
+    // RVA: 0x5D73C8C Offset: 0x5D6FC8C VA: 0x5D73C8C
+      -> public void zhs(int E, string z, int k, List<string> h) { }
+    // RVA: 0x5D73D41 Offset: 0x5D6FD41 VA: 0x5D73D41
+      -> public int kAc() { }
+    // RVA: 0x5D73D48 Offset: 0x5D6FD48 VA: 0x5D73D48
+      -> public bool kAD() { }
+    // RVA: 0x5D73DC0 Offset: 0x5D6FDC0 VA: 0x5D73DC0
+      -> public KeyLock kAB() { }
+    // RVA: 0x5D73DC8 Offset: 0x5D6FDC8 VA: 0x5D73DC8
+      -> public void .ctor() { }
+    // RVA: 0x5D73DF1 Offset: 0x5D6FDF1 VA: 0x5D73DF1
+      -> public void krT(string E) { }
+    // RVA: 0x5D73F3A Offset: 0x5D6FF3A VA: 0x5D73F3A
+      -> protected static void zOP(NetworkBehaviour E, NetworkReader z, NetworkConnectionToClient k) { }
+    // RVA: 0x5D7409C Offset: 0x5D7009C VA: 0x5D7409C
+      -> public void kAg(bool E) { }
+    // RVA: 0x5D741A6 Offset: 0x5D701A6 VA: 0x5D741A6
+      -> public bool kAv(PlayerManager E) { }
+    // RVA: 0x5D74237 Offset: 0x5D70237 VA: 0x5D74237
+      -> public void kAL(Action E) { }
+    // RVA: 0x5D742B5 Offset: 0x5D702B5 VA: 0x5D742B5
+      -> public bool HO(PlayerManager E) { }
+    // RVA: 0x5D74346 Offset: 0x5D70346 VA: 0x5D74346
+      -> protected static void zFx(NetworkBehaviour E, NetworkReader z, NetworkConnectionToClient k) { }
+    // RVA: 0x5D7445A Offset: 0x5D7045A VA: 0x5D7445A
+      -> public void kAy(string E, string z) { }
+    // RVA: 0x5D74598 Offset: 0x5D70598 VA: 0x5D74598
+      -> public List<string> kAf() { }
+    // RVA: 0x5D7464C Offset: 0x5D7064C VA: 0x5D7464C Slot: 8
+      -> public override void DeserializeSyncVars(NetworkReader reader, bool initialState) { }
+    // RVA: 0x5D7395B Offset: 0x5D6F95B VA: 0x5D7395B
+      -> public void kAY(string E) { }
+    // RVA: 0x5D74747 Offset: 0x5D70747 VA: 0x5D74747
+      -> public void zwl(PlayerManager E) { }
+    // RVA: 0x5D74A2E Offset: 0x5D70A2E VA: 0x5D74A2E
+      -> public void kfS(string E) { }
+    // RVA: 0x5D74B77 Offset: 0x5D70B77 VA: 0x5D74B77 Slot: 7
+      -> public override void SerializeSyncVars(NetworkWriter writer, bool forceAll) { }
+    // RVA: 0x5D740EC Offset: 0x5D700EC VA: 0x5D740EC
+      -> public void kAH(bool E) { }
+    // RVA: 0x5D74BEB Offset: 0x5D70BEB VA: 0x5D74BEB
+      -> public Lock.LockType kAO() { }
+    // RVA: 0x5D74BF2 Offset: 0x5D70BF2 VA: 0x5D74BF2 Slot: 11
+      -> public override void OnStartClient() { }
+    ... total methods: 55
+
+
+***********************************************************************************************
+CLASS / STRUCT: SlidingDoor
+***********************************************************************************************
+  public class SlidingDoor : NetworkBehaviour, StyleList<TimeValue> // TypeDefIndex: 3082
+  {
+
+  --- KEY FIELDS & OFFSETS ---
+    private static readonly Dictionary<string, SlidingDoor> lHL; // 0x0
+    private string m_DoorId; // 0x68
+    private bool m_StartOperational = false; // 0x70
+    private mU m_Sensor; // 0x78
+    private bool m_DetectNpc = false; // 0x80
+    private float m_OpenDuration; // 0x84
+    private float m_CloseDuration; // 0x88
+    private float m_CloseDelay; // 0x8C
+    private SlidingDoorLeaves m_Leaves; // 0x90
+    private SlidingDoorIndicator m_Indicator; // 0x98
+    private zTm m_Sound; // 0xA0
+    private Collider[] m_PassageBlockers; // 0xA8
+    private bool lHR = false; // 0xB0
+    private double lHB; // 0xB8
+    private float lHZ; // 0xC0
+    private bool lHf = false; // 0xC4
+    private readonly List<SlidingDoor.Occupant> lHD; // 0xC8
+    private Nullable<SlidingDoor.Phase> lHO; // 0xD0
+    private Nullable<bool> lHq; // 0xD8
+    private float lHu; // 0xDC
+
+  --- PROPERTIES ---
+    public string ekL { get; }
+    public bool ekR { get; }
+    public float ekB { get; }
+    public SlidingDoor.Phase ekZ { get; }
+    public bool ekf { get; set; }
+    public double ekD { get; set; }
+    public float ekO { get; set; }
+    public bool ekq { get; set; }
+
+  --- KEY METHODS (RVA & SIGNATURES) ---
+    // RVA: 0x7419395 Offset: 0x7415395 VA: 0x7419395
+      -> public float aJe() { }
+    // RVA: 0x741939E Offset: 0x741539E VA: 0x741939E
+      -> private void lI(Nullable<SlidingDoor.Phase> E, SlidingDoor.Phase z) { }
+    // RVA: 0x74194F2 Offset: 0x74154F2 VA: 0x74194F2
+      -> public void aJW(bool E) { }
+    // RVA: 0x741964D Offset: 0x741564D VA: 0x741964D
+      -> private void aJM() { }
+    // RVA: 0x74197D7 Offset: 0x74157D7 VA: 0x74197D7
+      -> private void aJl(float E) { }
+    // RVA: 0x7419A5F Offset: 0x7415A5F VA: 0x7419A5F
+      -> public void IR(bool E) { }
+    // RVA: 0x74198C6 Offset: 0x74158C6 VA: 0x74198C6
+      -> public SlidingDoor.Phase aJp() { }
+    // RVA: 0x7419A95 Offset: 0x7415A95 VA: 0x7419A95
+      -> public void aJC([In] float E) { }
+    // RVA: 0x7419B51 Offset: 0x7415B51 VA: 0x7419B51
+      -> private void aJs(Collider E) { }
+    // RVA: 0x7419DDA Offset: 0x7415DDA VA: 0x7419DDA
+      -> private void ktd(float E) { }
+    // RVA: 0x7419EDB Offset: 0x7415EDB VA: 0x7419EDB Slot: 19
+      -> public void kXk() { }
+    // RVA: 0x7419F74 Offset: 0x7415F74 VA: 0x7419F74
+      -> private void kqA() { }
+    // RVA: 0x741A008 Offset: 0x7416008 VA: 0x741A008
+      -> private void Awake() { }
+    // RVA: 0x741A011 Offset: 0x7416011 VA: 0x741A011
+      -> private void aJG() { }
+    // RVA: 0x741A20B Offset: 0x741620B VA: 0x741A20B
+      -> public void .ctor() { }
+    // RVA: 0x741A2AD Offset: 0x74162AD VA: 0x741A2AD
+      -> private void hjh() { }
+    // RVA: 0x741A337 Offset: 0x7416337 VA: 0x741A337
+      -> private void Ku() { }
+    // RVA: 0x741A3C1 Offset: 0x74163C1 VA: 0x741A3C1 Slot: 8
+      -> public override void DeserializeSyncVars(NetworkReader reader, bool initialState) { }
+    // RVA: 0x741A57D Offset: 0x741657D VA: 0x741A57D
+      -> public void aJX([In] bool E) { }
+    // RVA: 0x741A625 Offset: 0x7416625 VA: 0x741A625
+      -> private void Update() { }
+    // RVA: 0x741A096 Offset: 0x7416096 VA: 0x741A096
+      -> private bool aJn() { }
+    // RVA: 0x7419EE0 Offset: 0x7415EE0 VA: 0x7419EE0
+      -> private void aJA() { }
+    // RVA: 0x741A645 Offset: 0x7416645 VA: 0x741A645 Slot: 9
+      -> public override void OnStartServer() { }
+    // RVA: 0x741A784 Offset: 0x7416784 VA: 0x741A784
+      -> private static void .cctor() { }
+    // RVA: 0x741A804 Offset: 0x7416804 VA: 0x741A804
+      -> private bool zIJ() { }
+    ... total methods: 57
+
+
+***********************************************************************************************
+CLASS / STRUCT: AutoTurret
+***********************************************************************************************
+  public class AutoTurret : AutoTurretBase // TypeDefIndex: 1306
+  {
+
+  --- KEY FIELDS & OFFSETS ---
+    private float damage; // 0x180
+
+  --- KEY METHODS (RVA & SIGNATURES) ---
+    // RVA: 0x6FDB700 Offset: 0x6FD7700 VA: 0x6FDB700
+      -> public void .ctor() { }
+    // RVA: 0x6FDB74B Offset: 0x6FD774B VA: 0x6FDB74B Slot: 17
+      -> public override bool Weaved() { }
+
+
+***********************************************************************************************
+CLASS / STRUCT: AutoTurretBase
+***********************************************************************************************
+  public class AutoTurretBase : zCk, KeyValuePair<object, BlendShapeFrame>, KeyValuePair<object, bool> // TypeDefIndex: 1308
+  {
+
+  --- KEY FIELDS & OFFSETS ---
+    private static readonly float[] MRU; // 0x0
+    public tQ targetTrigger; // 0xA0
+    public zeT entityHandler; // 0xA8
+    public PlayerManager target; // 0xB0
+    public Transform eyePos; // 0xB8
+    public Vector3 aimDir; // 0xC0
+    public Transform gunYaw; // 0xD0
+    public Transform gunPitch; // 0xD8
+    public Transform centerMuzzle; // 0xE0
+    public float sightRange; // 0xE8
+    public float aimCone; // 0xEC
+    public AutoTurretBase.Flags flags; // 0xF0
+    public BuildingPiece piece; // 0xF8
+    public LayerMask visibilityMask; // 0x100
+    public string ammoId; // 0x108
+    public float fireRate; // 0x110
+    protected int m_Capacity; // 0x114
+    private string panelName; // 0x118
+    private string m_ContainerSoundKey; // 0x120
+    private SoundPlayer m_FireAudio; // 0x128
+    private ParticleSystem m_MuzzleFlash; // 0x130
+    private AudioSource m_AudioSource; // 0x138
+    private Inventory MRe; // 0x140
+    private Vector3 MRC; // 0x148
+    private Vector3 MRb; // 0x154
+    protected bool MRm = false; // 0x160
+    private int MRN; // 0x164
+    private float MRj; // 0x168
+    private float MRT; // 0x16C
+    private float MRP; // 0x170
+    private float MRL; // 0x174
+    private float MRR; // 0x178
+    private float MRB; // 0x17C
+
+  --- PROPERTIES ---
+    public string Uyf { get; }
+    public Inventory UyD { get; }
+
+  --- KEY METHODS (RVA & SIGNATURES) ---
+    // RVA: 0x6FDB74E Offset: 0x6FD774E VA: 0x6FDB74E
+      -> protected void lH() { }
+    // RVA: 0x6FDB87D Offset: 0x6FD787D VA: 0x6FDB87D
+      -> private bool hRd() { }
+    // RVA: 0x6FDB894 Offset: 0x6FD7894 VA: 0x6FDB894
+      -> private bool zRr() { }
+    // RVA: 0x6FDB8A8 Offset: 0x6FD78A8 VA: 0x6FDB8A8
+      -> private bool zTS(PlayerManager E) { }
+    // RVA: 0x6FDB886 Offset: 0x6FD7886 VA: 0x6FDB886
+      -> private bool hSw(AutoTurretBase.Flags E) { }
+    // RVA: 0x6FDB8D5 Offset: 0x6FD78D5 VA: 0x6FDB8D5 Slot: 17
+      -> public override bool Weaved() { }
+    // RVA: 0x6FDB8D8 Offset: 0x6FD78D8 VA: 0x6FDB8D8
+      -> protected static void zyq(NetworkBehaviour E, NetworkReader z, NetworkConnectionToClient k) { }
+    // RVA: 0x6FDBBB1 Offset: 0x6FD7BB1 VA: 0x6FDBBB1
+      -> protected void hSx() { }
+    // RVA: 0x6FDBC56 Offset: 0x6FD7C56 VA: 0x6FDBC56
+      -> private static void .cctor() { }
+    // RVA: 0x6FDBE8F Offset: 0x6FD7E8F VA: 0x6FDBE8F
+      -> protected static void hXb(NetworkBehaviour E, NetworkReader z, NetworkConnectionToClient k) { }
+    // RVA: 0x6FDC0AE Offset: 0x6FD80AE VA: 0x6FDC0AE
+      -> protected static void hbp(NetworkBehaviour E, NetworkReader z, NetworkConnectionToClient k) { }
+    // RVA: 0x6FDC1A3 Offset: 0x6FD81A3 VA: 0x6FDC1A3 Slot: 25
+      -> public override void hSy() { }
+    // RVA: 0x6FDC27B Offset: 0x6FD827B VA: 0x6FDC27B
+      -> protected void kQG(Vector3 E, Quaternion z, int k) { }
+    // RVA: 0x6FDC3FF Offset: 0x6FD83FF VA: 0x6FDC3FF
+      -> private bool kBj() { }
+    // RVA: 0x6FDC45D Offset: 0x6FD845D VA: 0x6FDC45D Slot: 41
+      -> protected virtual void hSf() { }
+    // RVA: 0x6FDC855 Offset: 0x6FD8855 VA: 0x6FDC855 Slot: 39
+      -> protected override void Awake() { }
+    // RVA: 0x6FDC9F2 Offset: 0x6FD89F2 VA: 0x6FDC9F2
+      -> private bool hrm() { }
+    // RVA: 0x6FDCA50 Offset: 0x6FD8A50 VA: 0x6FDCA50
+      -> private void kDs(bool E) { }
+    // RVA: 0x6FDCAAC Offset: 0x6FD8AAC VA: 0x6FDCAAC
+      -> private bool zJv() { }
+    // RVA: 0x6FDCAB5 Offset: 0x6FD8AB5 VA: 0x6FDCAB5
+      -> protected void hSV(Vector3 E, Quaternion z, int k) { }
+    // RVA: 0x6FDB5ED Offset: 0x6FD75ED VA: 0x6FDB5ED
+      -> public void .ctor() { }
+    // RVA: 0x6FDCBAB Offset: 0x6FD8BAB VA: 0x6FDCBAB Slot: 40
+      -> public string hSD() { }
+    // RVA: 0x6FDCBB3 Offset: 0x6FD8BB3 VA: 0x6FDCBB3
+      -> private Quaternion hlL(Quaternion E, Quaternion z, float k) { }
+    // RVA: 0x6FDBF84 Offset: 0x6FD7F84 VA: 0x6FDBF84
+      -> protected void hAk() { }
+    // RVA: 0x6FDC1F1 Offset: 0x6FD81F1 VA: 0x6FDC1F1
+      -> private bool hSg() { }
+    ... total methods: 67
+
+
+***********************************************************************************************
+CLASS / STRUCT: PlayerVitals
+***********************************************************************************************
+  public class PlayerVitals : EntityVitals // TypeDefIndex: 8867
+  {
+
+  --- KEY FIELDS & OFFSETS ---
+    private const int Khs;
+    private Action<float> KhJ; // 0xF8
+    public PlayerManager Player; // 0x100
+    public zeP PlayerEvent; // 0x108
+    private float startHealthMin; // 0x110
+    private float startHealthMax; // 0x114
+    public StatRegenData m_HealthRegeneration; // 0x118
+    private PlayerDamageAudioConfig m_DamageAudioConfig; // 0x120
+    private StatDepleter m_ThirstDepletion; // 0x128
+    private StatDepleter m_HungerDepletion; // 0x130
+    private StatDepleter m_OxygenDepletion; // 0x138
+    private float m_OxygenRegenRate; // 0x140
+    private float m_Temperature; // 0x144
+    private float m_RadiationLevel; // 0x148
+    private float m_RadiationPoison; // 0x14C
+    private bool m_SleepRestoresHealth = false; // 0x150
+    private float m_DamagePeriod; // 0x154
+    private float m_LastDamageTime; // 0x158
+    private float updatePeriod; // 0x15C
+    private zGT Khn; // 0x160
+    private readonly int[] KhQ; // 0x168
+    private float KhM; // 0x170
+    private bool Khl = false; // 0x174
+
+  --- PROPERTIES ---
+    public float ewQ { get; }
+    public float ewM { get; }
+    public float ewl { get; set; }
+
+  --- KEY METHODS (RVA & SIGNATURES) ---
+    // RVA: 0x646729A Offset: 0x646329A VA: 0x646729A
+      -> public void sBt(Action<float> E) { }
+    // RVA: 0x646733A Offset: 0x646333A VA: 0x646733A
+      -> protected void kIg(float E) { }
+    // RVA: 0x646739B Offset: 0x646339B VA: 0x646739B
+      -> protected void zsM(int E, float z, int k, int h) { }
+    // RVA: 0x6467531 Offset: 0x6463531 VA: 0x6467531
+      -> private static float kAr(SoundPlayer.PlaybackRequest E) { }
+    // RVA: 0x6467591 Offset: 0x6463591 VA: 0x6467591
+      -> private zCy.DamageType sBM(float E, zCy.DamageType z) { }
+    // RVA: 0x64676B0 Offset: 0x64636B0 VA: 0x64676B0
+      -> public void sBs(float E) { }
+    // RVA: 0x64676B9 Offset: 0x64636B9 VA: 0x64676B9
+      -> protected void Gt(float E, float z, float k, float h, float i) { }
+    // RVA: 0x64677F1 Offset: 0x64637F1 VA: 0x64677F1
+      -> private void sBn(float E, ReasonedValueReasonHealthEvent z) { }
+    // RVA: 0x64678BF Offset: 0x64638BF VA: 0x64678BF
+      -> protected static void cn(NetworkBehaviour E, NetworkReader z, NetworkConnectionToClient k) { }
+    // RVA: 0x6467A31 Offset: 0x6463A31 VA: 0x6467A31
+      -> protected void sZz(float E) { }
+    // RVA: 0x6467A92 Offset: 0x6463A92 VA: 0x6467A92
+      -> public float hos(float E, float z) { }
+    // RVA: 0x6467B0C Offset: 0x6463B0C VA: 0x6467B0C
+      -> public float sBr() { }
+    // RVA: 0x6467B15 Offset: 0x6463B15 VA: 0x6467B15
+      -> public void hPE(float E) { }
+    // RVA: 0x6467B76 Offset: 0x6463B76 VA: 0x6467B76
+      -> protected void ty(float E) { }
+    // RVA: 0x6467BD7 Offset: 0x6463BD7 VA: 0x6467BD7
+      -> protected void ziU(float E) { }
+    // RVA: 0x6467C38 Offset: 0x6463C38 VA: 0x6467C38
+      -> private bool sBX(zCy.DamageType E) { }
+    // RVA: 0x6467CBC Offset: 0x6463CBC VA: 0x6467CBC
+      -> protected void hDr(float E) { }
+    // RVA: 0x6467D1D Offset: 0x6463D1D VA: 0x6467D1D
+      -> public void Gk(float E) { }
+    // RVA: 0x6467D7E Offset: 0x6463D7E VA: 0x6467D7E
+      -> protected void ua(float E, float z, float k, float h, float i) { }
+    // RVA: 0x6467EB6 Offset: 0x6463EB6 VA: 0x6467EB6
+      -> protected static void sBq(NetworkBehaviour E, NetworkReader z, NetworkConnectionToClient k) { }
+    // RVA: 0x64680EC Offset: 0x64640EC VA: 0x64680EC
+      -> protected void sBy(float E) { }
+    // RVA: 0x646814D Offset: 0x646414D VA: 0x646814D
+      -> protected static void sBg(NetworkBehaviour E, NetworkReader z, NetworkConnectionToClient k) { }
+    // RVA: 0x6468364 Offset: 0x6464364 VA: 0x6468364
+      -> protected void sBw(float E) { }
+    // RVA: 0x64683C5 Offset: 0x64643C5 VA: 0x64683C5
+      -> protected static void tc(NetworkBehaviour E, NetworkReader z, NetworkConnectionToClient k) { }
+    // RVA: 0x6468504 Offset: 0x6464504 VA: 0x6468504
+      -> public void hlD(float amount) { }
+    ... total methods: 148
+
+
+***********************************************************************************************
+CLASS / STRUCT: EntityVitals
+***********************************************************************************************
+  public class EntityVitals : GenericVitals // TypeDefIndex: 8854
+  {
+
+  --- KEY FIELDS & OFFSETS ---
+    protected float m_MinFallSpeed; // 0xC0
+    protected float m_MaxFallSpeed; // 0xC4
+    public SoundPlayer m_HurtAudio; // 0xC8
+    public float m_TimeBetweenScreams; // 0xD0
+    public SoundPlayer m_FallDamageAudio; // 0xD8
+    public SoundPlayer m_ElectricShockAudio; // 0xE0
+    public Animator m_Animator; // 0xE8
+    public float m_GetHitMax; // 0xF0
+    public float m_NextTimeCanScream; // 0xF4
+
+  --- KEY METHODS (RVA & SIGNATURES) ---
+    // RVA: 0x6462815 Offset: 0x645E815 VA: 0x6462815 Slot: 19
+      -> protected override void Awake() { }
+    // RVA: 0x64629CB Offset: 0x645E9CB VA: 0x64629CB Slot: 22
+      -> protected virtual void sLv(ReasonedValueReasonHealthEvent E) { }
+    // RVA: 0x6462A76 Offset: 0x645EA76 VA: 0x6462A76 Slot: 23
+      -> public virtual void sLy(float E) { }
+    // RVA: 0x6462712 Offset: 0x645E712 VA: 0x6462712
+      -> public void .ctor() { }
+    // RVA: 0x6462AE6 Offset: 0x645EAE6 VA: 0x6462AE6 Slot: 17
+      -> public override bool Weaved() { }
+
+
+***********************************************************************************************
+CLASS / STRUCT: GenericVitals
+***********************************************************************************************
+  public class GenericVitals : zem // TypeDefIndex: 8856
+  {
+
+  --- KEY FIELDS & OFFSETS ---
+    public float m_MaxHealth; // 0x88
+    public ProtectionValues m_Protection; // 0x90
+    public bool m_PveDamage = false; // 0x98
+    protected AudioSource m_AudioSource; // 0xA0
+    private HitBox[] m_Hitboxes; // 0xA8
+    private float[] m_DamageMultipliers; // 0xB0
+    protected float KkL; // 0xB8
+    private float KkR; // 0xBC
+
+  --- PROPERTIES ---
+    public static Dictionary<uint, GenericVitals> ewW { get; }
+
+  --- KEY METHODS (RVA & SIGNATURES) ---
+    // RVA: 0x6462BF8 Offset: 0x645EBF8 VA: 0x6462BF8
+      -> public HitBox gJ(int E) { }
+    // RVA: 0x6462C1A Offset: 0x645EC1A VA: 0x6462C1A
+      -> public void lt(HitBox[] E) { }
+    // RVA: 0x6462C2D Offset: 0x645EC2D VA: 0x6462C2D
+      -> public void koH(HitBox[] E) { }
+    // RVA: 0x6462C40 Offset: 0x645EC40 VA: 0x6462C40
+      -> public HitBox sRz(int E) { }
+    // RVA: 0x6462C62 Offset: 0x645EC62 VA: 0x6462C62 Slot: 18
+      -> protected virtual void sLx() { }
+    // RVA: 0x6462919 Offset: 0x645E919 VA: 0x6462919 Slot: 19
+      -> protected virtual void Awake() { }
+    // RVA: 0x6462CB4 Offset: 0x645ECB4 VA: 0x6462CB4 Slot: 20
+      -> public virtual void sRE(float E, zCy.DamageType z, PlayerManager k) { }
+    // RVA: 0x6462DF3 Offset: 0x645EDF3 VA: 0x6462DF3
+      -> public HitBox keL(int E) { }
+    // RVA: 0x6462E15 Offset: 0x645EE15 VA: 0x6462E15
+      -> public HitBox sRk() { }
+    // RVA: 0x6462E5F Offset: 0x645EE5F VA: 0x6462E5F
+      -> public void tG(HitBox[] E) { }
+    // RVA: 0x6462E72 Offset: 0x645EE72 VA: 0x6462E72 Slot: 21
+      -> protected virtual bool sLV(zeX E) { }
+    // RVA: 0x64631DB Offset: 0x645F1DB VA: 0x64631DB Slot: 9
+      -> public override void OnStartServer() { }
+    // RVA: 0x64632B2 Offset: 0x645F2B2 VA: 0x64632B2
+      -> private void kkC() { }
+    // RVA: 0x646335D Offset: 0x645F35D VA: 0x646335D Slot: 17
+      -> public override bool Weaved() { }
+    // RVA: 0x6463360 Offset: 0x645F360 VA: 0x6463360
+      -> public HitBox yZ() { }
+    // RVA: 0x64633AA Offset: 0x645F3AA VA: 0x64633AA
+      -> public HitBox hnr(int E) { }
+    // RVA: 0x64633CC Offset: 0x645F3CC VA: 0x64633CC
+      -> public static Dictionary<uint, GenericVitals> sLc() { }
+    // RVA: 0x6463438 Offset: 0x645F438 VA: 0x6463438
+      -> public HitBox kXx() { }
+    // RVA: 0x6463482 Offset: 0x645F482 VA: 0x6463482
+      -> private void OnDestroy() { }
+    // RVA: 0x6462AD5 Offset: 0x645EAD5 VA: 0x6462AD5
+      -> public void .ctor() { }
+    // RVA: 0x646352D Offset: 0x645F52D VA: 0x646352D
+      -> public void sRh(HitBox[] E) { }
+    // RVA: 0x6463540 Offset: 0x645F540 VA: 0x6463540
+      -> public HitBox kuY(int E) { }
+
+
+***********************************************************************************************
+CLASS / STRUCT: zeT
+***********************************************************************************************
+  public class zeT : zem // TypeDefIndex: 8877
+  {
+
+  --- KEY FIELDS & OFFSETS ---
+    public const float HealthError;
+    public string DisplayName; // 0x88
+    public int KillExp; // 0x90
+    public zeu<float, ReasonedValueReasonHealthEvent> Health; // 0x98
+    public zeB<zeX> ChangeHealth; // 0xA0
+    public zeg<bool> IsGrounded; // 0xA8
+    public zeg<Vector3> Velocity; // 0xB0
+    public zeD<float> Land; // 0xB8
+    public zef Death; // 0xC0
+    public zef Respawn; // 0xC8
+
+  --- PROPERTIES ---
+    public bool ewe { get; }
+
+  --- KEY METHODS (RVA & SIGNATURES) ---
+    // RVA: 0x646595C Offset: 0x646195C VA: 0x646595C
+      -> public bool sZC() { }
+    // RVA: 0x6473374 Offset: 0x646F374 VA: 0x6473374
+      -> public void .ctor() { }
+    // RVA: 0x647360D Offset: 0x646F60D VA: 0x647360D Slot: 17
+      -> public override bool Weaved() { }
+
+
+***********************************************************************************************
+CLASS / STRUCT: DisconnectedSleeper
+***********************************************************************************************
+  public class DisconnectedSleeper : NetworkBehaviour, object // TypeDefIndex: 3101
+  {
+
+  --- KEY FIELDS & OFFSETS ---
+    private const float lvQ;
+    private const float lvM;
+    private const float lvS;
+    private const float lvA;
+    private Animator _animator; // 0x68
+    private mm _sleeperNickLabel; // 0x70
+    private wP displayNameProvider; // 0x78
+    private PlayerModelInfo _playerModelInfo; // 0x80
+    private zeT _entityEventHandler; // 0x88
+    private EntityVitals vitals; // 0x90
+    private GameObject _backpackPrefab; // 0x98
+    private CapsuleCollider hitBox; // 0xA0
+    private CapsuleCollider bodyCollider; // 0xA8
+    private GameObject kccCollider; // 0xB0
+    private Transform spawnPoint; // 0xB8
+    private CapsuleCollider serverColliderPrefab; // 0xC0
+    private Rigidbody rigidbody; // 0xC8
+    private PhysicsMaterial lowFriction; // 0xD0
+    private Transform model; // 0xD8
+    private Vector3 minOffset; // 0xE0
+    private Vector3 freeOffset; // 0xEC
+    private LootObject lootObject; // 0xF8
+    private CharacterSpeedConfig characterSpeedConfig; // 0x100
+    private AudioSource _snoringSource; // 0x108
+    public string UserID; // 0x110
+    public string Nick; // 0x118
+    public bool IsImmortal = false; // 0x120
+    public float Health; // 0x124
+    public bool IsStable = false; // 0x128
+    public bool HasSpace = false; // 0x129
+    public string ClanId; // 0x130
+    public string ClanTag; // 0x138
+    public readonly SyncList<EquipPiece> sleeperEquip; // 0x140
+    private const float lvo;
+    private float <lvX>k__BackingField; // 0x148
+    private DateTime <lvK>k__BackingField; // 0x150
+    private bool <lvU>k__BackingField = false; // 0x158
+    private Nullable<DateTime> <lve>k__BackingField; // 0x160
+    private Nullable<DateTime> <lvC>k__BackingField; // 0x170
+    private float lvb; // 0x180
+    private Zg lvm; // 0x188
+    private CapsuleCollider lvN; // 0x190
+    private float lvj; // 0x198
+    private float lvT; // 0x19C
+    private const float lvP;
+    private const float lvL;
+    private zhc lvR; // 0x1A0
+    private Rr lvB; // 0x1A8
+    private float lvZ; // 0x1B0
+    private bool lvf = false; // 0x1B4
+    private bool lvD = false; // 0x1B5
+    private static readonly int lvO; // 0x0
+    public Action<string, string> _Mirror_SyncVarHookDelegate_ClanId; // 0x1B8
+    public Action<string, string> _Mirror_SyncVarHookDelegate_ClanTag; // 0x1C0
+
+  --- PROPERTIES ---
+    public LootObject ekI { get; }
+    public float lvX { get; set; }
+    public DateTime lvK { get; set; }
+    public bool lvU { get; set; }
+    public Nullable<DateTime> lve { get; set; }
+    public Nullable<DateTime> lvC { get; set; }
+    public string ekd { get; set; }
+    public string ekw { get; set; }
+    public bool ekY { get; set; }
+    public float ekc { get; set; }
+    public bool ekx { get; set; }
+    public bool ekV { get; set; }
+    public string ehE { get; set; }
+    public string ehz { get; set; }
+
+  --- KEY METHODS (RVA & SIGNATURES) ---
+    // RVA: 0x7422830 Offset: 0x741E830 VA: 0x7422830
+      -> public float aQG() { }
+    // RVA: 0x7422839 Offset: 0x741E839 VA: 0x7422839
+      -> public void kLr(string E, string z) { }
+    // RVA: 0x7422B07 Offset: 0x741EB07 VA: 0x7422B07
+      -> private void kVY() { }
+    // RVA: 0x7422C94 Offset: 0x741EC94 VA: 0x7422C94
+      -> private void anv() { }
+    // RVA: 0x7422DFC Offset: 0x741EDFC VA: 0x7422DFC
+      -> private void zEo() { }
+    // RVA: 0x7422EEC Offset: 0x741EEEC VA: 0x7422EEC
+      -> public DateTime anP() { }
+    // RVA: 0x7422EF4 Offset: 0x741EEF4 VA: 0x7422EF4
+      -> private void anL(DateTime E) { }
+    // RVA: 0x7422EFC Offset: 0x741EEFC VA: 0x7422EFC
+      -> private void kgQ() { }
+    // RVA: 0x7422FDF Offset: 0x741EFDF VA: 0x7422FDF
+      -> private float MT() { }
+    // RVA: 0x742300A Offset: 0x741F00A VA: 0x742300A Slot: 11
+      -> public override void OnStartClient() { }
+    // RVA: 0x74230BD Offset: 0x741F0BD VA: 0x74230BD
+      -> private void anT(float E) { }
+    // RVA: 0x74230C6 Offset: 0x741F0C6 VA: 0x74230C6
+      -> public bool aQr() { }
+    // RVA: 0x74230CD Offset: 0x741F0CD VA: 0x74230CD
+      -> private void kGg() { }
+    // RVA: 0x74232CC Offset: 0x741F2CC VA: 0x74232CC
+      -> private void zJS() { }
+    // RVA: 0x742342F Offset: 0x741F42F VA: 0x742342F
+      -> public Nullable<DateTime> anZ() { }
+    // RVA: 0x742343D Offset: 0x741F43D VA: 0x742343D
+      -> private void Update() { }
+    // RVA: 0x7423713 Offset: 0x741F713 VA: 0x7423713
+      -> private void Pz() { }
+    // RVA: 0x74237FE Offset: 0x741F7FE VA: 0x74237FE
+      -> private bool aQk(string E) { }
+    // RVA: 0x742392F Offset: 0x741F92F VA: 0x742392F
+      -> public void aQp([In] string E) { }
+    // RVA: 0x74239DD Offset: 0x741F9DD VA: 0x74239DD
+      -> private void hTJ() { }
+    // RVA: 0x7423ACD Offset: 0x741FACD VA: 0x7423ACD
+      -> private void zxm() { }
+    // RVA: 0x742320C Offset: 0x741F20C VA: 0x742320C
+      -> private void anw() { }
+    // RVA: 0x7423BBD Offset: 0x741FBBD VA: 0x7423BBD
+      -> public void kif(string E, string z) { }
+    // RVA: 0x7423C68 Offset: 0x741FC68 VA: 0x7423C68
+      -> public string aQl() { }
+    // RVA: 0x7423C70 Offset: 0x741FC70 VA: 0x7423C70
+      -> private void Ii() { }
+    ... total methods: 99
+
+
+***********************************************************************************************
+CLASS / STRUCT: AirdropLootBox
+***********************************************************************************************
+  public class AirdropLootBox : NetworkBehaviour // TypeDefIndex: 4685
+  {
+
+  --- KEY FIELDS & OFFSETS ---
+    private static readonly int Azm; // 0x0
+    private static readonly int AzN; // 0x4
+    private static readonly int Azj; // 0x8
+    private GameObject lootBoxPrefab; // 0x68
+    private Transform[] lootBoxSpawnPoint; // 0x70
+    private ParticleSystem deathParticles; // 0x78
+    private SkinnedMeshRenderer lootBoxRenderer; // 0x80
+    private Bounds bounds; // 0x88
+    private GameObject lootBox; // 0xA0
+    private Animator lootBoxAnimator; // 0xA8
+    private Vector3 targetPositionOffset; // 0xB0
+    private Vector3 AzT; // 0xBC
+    private Vector3 AzP; // 0xC8
+    private AirdropConfig AzL; // 0xD8
+    private LootSpawn AzR; // 0xE0
+    private bool AzB = false; // 0xE8
+    private float AzZ; // 0xEC
+    private bool Azf = false; // 0xF0
+    private readonly Collider[] AzD; // 0xF8
+    public bool opened = false; // 0x100
+
+  --- PROPERTIES ---
+    public bool eAK { get; set; }
+
+  --- KEY METHODS (RVA & SIGNATURES) ---
+    // RVA: 0x5A599BB Offset: 0x5A559BB VA: 0x5A599BB
+      -> private UniTaskVoid ppL() { }
+    // RVA: 0x5A59A43 Offset: 0x5A55A43 VA: 0x5A59A43
+      -> private void Nf() { }
+    // RVA: 0x5A59B63 Offset: 0x5A55B63 VA: 0x5A59B63
+      -> private void ppN() { }
+    // RVA: 0x5A59C08 Offset: 0x5A55C08 VA: 0x5A59C08
+      -> private void ppj() { }
+    // RVA: 0x5A59CAD Offset: 0x5A55CAD VA: 0x5A59CAD
+      -> private void kRT() { }
+    // RVA: 0x5A59DCD Offset: 0x5A55DCD VA: 0x5A59DCD
+      -> public void kaH(Vector3 E, Vector3 z, AirdropConfig k, LootSpawn h) { }
+    // RVA: 0x5A59F77 Offset: 0x5A55F77 VA: 0x5A59F77
+      -> protected void ppZ() { }
+    // RVA: 0x5A59FFD Offset: 0x5A55FFD VA: 0x5A59FFD
+      -> protected void zXQ() { }
+    // RVA: 0x5A5A067 Offset: 0x5A56067 VA: 0x5A5A067
+      -> protected void zGI() { }
+    // RVA: 0x5A5A0D1 Offset: 0x5A560D1 VA: 0x5A5A0D1
+      -> public void qa(Vector3 E, Vector3 z, AirdropConfig k, LootSpawn h) { }
+    // RVA: 0x5A5A1D3 Offset: 0x5A561D3 VA: 0x5A5A1D3
+      -> private void zNy() { }
+    // RVA: 0x5A59ECF Offset: 0x5A55ECF VA: 0x5A59ECF
+      -> public void ppB([In] bool E) { }
+    // RVA: 0x5A5A242 Offset: 0x5A56242 VA: 0x5A5A242
+      -> private void Rv() { }
+    // RVA: 0x5A5A2B1 Offset: 0x5A562B1 VA: 0x5A5A2B1
+      -> private void kLR() { }
+    // RVA: 0x5A5A320 Offset: 0x5A56320 VA: 0x5A5A320
+      -> public void ppm(Vector3 E, Vector3 z, AirdropConfig k, LootSpawn h) { }
+    // RVA: 0x5A5A422 Offset: 0x5A56422 VA: 0x5A5A422
+      -> protected static void zMK(NetworkBehaviour E, NetworkReader z, NetworkConnectionToClient k) { }
+    // RVA: 0x5A5A581 Offset: 0x5A56581 VA: 0x5A5A581 Slot: 7
+      -> public override void SerializeSyncVars(NetworkWriter writer, bool forceAll) { }
+    // RVA: 0x5A5A5C8 Offset: 0x5A565C8 VA: 0x5A5A5C8
+      -> private void kfB() { }
+    // RVA: 0x5A5A6E8 Offset: 0x5A566E8 VA: 0x5A5A6E8
+      -> protected void zSB() { }
+    // RVA: 0x5A5A752 Offset: 0x5A56752 VA: 0x5A5A752
+      -> private bool ppT() { }
+    // RVA: 0x5A5A99D Offset: 0x5A5699D VA: 0x5A5A99D Slot: 8
+      -> public override void DeserializeSyncVars(NetworkReader reader, bool initialState) { }
+    // RVA: 0x5A5AA2E Offset: 0x5A56A2E VA: 0x5A5AA2E
+      -> public void kSr(Vector3 E, Vector3 z, AirdropConfig k, LootSpawn h) { }
+    // RVA: 0x5A5AB30 Offset: 0x5A56B30 VA: 0x5A5AB30
+      -> protected static void zEE(NetworkBehaviour E, NetworkReader z, NetworkConnectionToClient k) { }
+    // RVA: 0x5A5AC25 Offset: 0x5A56C25 VA: 0x5A5AC25 Slot: 17
+      -> public override bool Weaved() { }
+    // RVA: 0x5A5AC28 Offset: 0x5A56C28 VA: 0x5A5AC28
+      -> protected static void ppf(NetworkBehaviour E, NetworkReader z, NetworkConnectionToClient k) { }
+    ... total methods: 35
+
+
+***********************************************************************************************
+CLASS / STRUCT: MouseLook
+***********************************************************************************************
+  public class MouseLook : MonoBehaviour // TypeDefIndex: 802
+  {
+
+  --- KEY FIELDS & OFFSETS ---
+    private bool _lockCursor = false; // 0x20
+    private KeyCode _unlockCursorKey; // 0x24
+    private float _lateralSensitivity; // 0x28
+    private float _verticalSensitivity; // 0x2C
+    private bool _smooth = false; // 0x30
+    public float _smoothTime; // 0x34
+    private bool _clampPitch = false; // 0x38
+    private float _minPitchAngle; // 0x3C
+    private float _maxPitchAngle; // 0x40
+    protected bool MXs = false; // 0x44
+    protected Quaternion MXJ; // 0x48
+    protected Quaternion MXn; // 0x58
+
+  --- PROPERTIES ---
+    public bool UHO { get; set; }
+    public KeyCode UHq { get; set; }
+    public float UHu { get; set; }
+    public float UHg { get; set; }
+    public bool UHH { get; set; }
+    public float UHv { get; set; }
+    public bool UHy { get; set; }
+    public float UHF { get; set; }
+    public float UHI { get; set; }
+
+  --- KEY METHODS (RVA & SIGNATURES) ---
+    // RVA: 0x6AB4BFC Offset: 0x6AB0BFC VA: 0x6AB4BFC
+      -> public float kVX() { }
+    // RVA: 0x6AB4C02 Offset: 0x6AB0C02 VA: 0x6AB4C02
+      -> public float kVj() { }
+    // RVA: 0x6AB4C08 Offset: 0x6AB0C08 VA: 0x6AB4C08
+      -> protected Quaternion kVO(Quaternion E) { }
+    // RVA: 0x6AB4C80 Offset: 0x6AB0C80 VA: 0x6AB4C80
+      -> public void kVS(KeyCode E) { }
+    // RVA: 0x6AB4C84 Offset: 0x6AB0C84 VA: 0x6AB4C84
+      -> public KeyCode kVl() { }
+    // RVA: 0x6AB4C88 Offset: 0x6AB0C88 VA: 0x6AB4C88
+      -> public void kVT(float E) { }
+    // RVA: 0x6AB4CB3 Offset: 0x6AB0CB3 VA: 0x6AB4CB3 Slot: 4
+      -> public virtual void OnValidate() { }
+    // RVA: 0x6AB4D45 Offset: 0x6AB0D45 VA: 0x6AB4D45
+      -> protected Quaternion hTO(Quaternion E) { }
+    // RVA: 0x6AB4DBD Offset: 0x6AB0DBD VA: 0x6AB4DBD
+      -> protected Quaternion zNl(Quaternion E) { }
+    // RVA: 0x6AB4E35 Offset: 0x6AB0E35 VA: 0x6AB4E35
+      -> public void kVe(bool E) { }
+    // RVA: 0x6AB4E3A Offset: 0x6AB0E3A VA: 0x6AB4E3A
+      -> protected Quaternion zMp(Quaternion E) { }
+    // RVA: 0x6AB4D0D Offset: 0x6AB0D0D VA: 0x6AB4D0D
+      -> public void kVb(float E) { }
+    // RVA: 0x6AB4EB2 Offset: 0x6AB0EB2 VA: 0x6AB4EB2
+      -> public bool kVm() { }
+    // RVA: 0x6AB4EB6 Offset: 0x6AB0EB6 VA: 0x6AB4EB6
+      -> public bool kVQ() { }
+    // RVA: 0x6AB4EBA Offset: 0x6AB0EBA VA: 0x6AB4EBA Slot: 5
+      -> public virtual void kVf() { }
+    // RVA: 0x6AB4ED4 Offset: 0x6AB0ED4 VA: 0x6AB4ED4
+      -> protected Quaternion zwa(Quaternion E) { }
+    // RVA: 0x6AB4CF3 Offset: 0x6AB0CF3 VA: 0x6AB4CF3
+      -> public void kVo(float E) { }
+    // RVA: 0x6AB4D1A Offset: 0x6AB0D1A VA: 0x6AB4D1A
+      -> public void kVL(float E) { }
+    // RVA: 0x6AB4F4C Offset: 0x6AB0F4C VA: 0x6AB4F4C
+      -> public float kVP() { }
+    // RVA: 0x6AB4F52 Offset: 0x6AB0F52 VA: 0x6AB4F52
+      -> public float kVA() { }
+    // RVA: 0x6AB4F58 Offset: 0x6AB0F58 VA: 0x6AB4F58
+      -> public void kVN(bool E) { }
+    // RVA: 0x6AB4F5D Offset: 0x6AB0F5D VA: 0x6AB4F5D Slot: 6
+      -> public virtual void kVB(CharacterMovement E, Transform z) { }
+    // RVA: 0x6AB5838 Offset: 0x6AB1838 VA: 0x6AB5838 Slot: 7
+      -> protected virtual void kVD() { }
+    // RVA: 0x6AB5886 Offset: 0x6AB1886 VA: 0x6AB5886
+      -> public void kVM(bool E) { }
+    // RVA: 0x6AB588B Offset: 0x6AB188B VA: 0x6AB588B Slot: 8
+      -> public virtual void kVR(Transform E, Transform z) { }
+    ... total methods: 30
+
+
+***********************************************************************************************
+CLASS / STRUCT: HackType
+***********************************************************************************************
+  public enum HackType // TypeDefIndex: 206
+  {
+
+  --- KEY FIELDS & OFFSETS ---
+    public int value__; // 0x0
+    public const HackType None;
+    public const HackType NoClip;
+    public const HackType SpeedHack;
+    public const HackType FlyHack;
+    public const HackType InsideTerrain;
+
+
+***********************************************************************************************
+CLASS / STRUCT: PlayerFlags
+***********************************************************************************************
+  public enum PlayerFlags // TypeDefIndex: 9215
+  {
+
+  --- KEY FIELDS & OFFSETS ---
+    public int value__; // 0x0
+    public const PlayerManager.PlayerFlags Sleeping;
+    public const PlayerManager.PlayerFlags Spectating;
+    public const PlayerManager.PlayerFlags Muted;
+
+
+***********************************************************************************************
+CLASS / STRUCT: ProtectionValues
+***********************************************************************************************
+  public class ProtectionValues : ScriptableObject // TypeDefIndex: 463
+  {
+
+  --- KEY FIELDS & OFFSETS ---
+    private const int DamageTypeCount;
+    public float density; // 0x18
+    public float[] amounts; // 0x20
+
+  --- KEY METHODS (RVA & SIGNATURES) ---
+    // RVA: 0x5FB6A2A Offset: 0x5FB2A2A VA: 0x5FB6A2A
+      -> public float at(zCy.DamageType E) { }
+    // RVA: 0x5FB6A4E Offset: 0x5FB2A4E VA: 0x5FB6A4E
+      -> public void .ctor() { }
+    // RVA: 0x5FB6AA4 Offset: 0x5FB2AA4 VA: 0x5FB6AA4
+      -> public float kUB(zCy.DamageType E) { }
+    // RVA: 0x5FB6BB2 Offset: 0x5FB2BB2 VA: 0x5FB6BB2
+      -> public float i(zCy.DamageType E) { }
+    // RVA: 0x5FB6CC6 Offset: 0x5FB2CC6 VA: 0x5FB6CC6
+      -> public void hkz() { }
+    // RVA: 0x5FB6D70 Offset: 0x5FB2D70 VA: 0x5FB6D70
+      -> public float znL(float damage, zCy.DamageType damageType) { }
+    // RVA: 0x5FB6D98 Offset: 0x5FB2D98 VA: 0x5FB6D98
+      -> public void gs() { }
+    // RVA: 0x5FB6E74 Offset: 0x5FB2E74 VA: 0x5FB6E74
+      -> public void Ao() { }
+    // RVA: 0x5FB6F1E Offset: 0x5FB2F1E VA: 0x5FB6F1E
+      -> public float Scale(float damage, zCy.DamageType damageType) { }
+    // RVA: 0x5FB6F46 Offset: 0x5FB2F46 VA: 0x5FB6F46
+      -> public float hAv(float damage, zCy.DamageType damageType) { }
+    // RVA: 0x5FB6F6E Offset: 0x5FB2F6E VA: 0x5FB6F6E
+      -> public float aF(zCy.DamageType E) { }
+    // RVA: 0x5FB7082 Offset: 0x5FB3082 VA: 0x5FB7082
+      -> public void kUR() { }
+    // RVA: 0x5FB7154 Offset: 0x5FB3154 VA: 0x5FB7154
+      -> public float kvu(float damage, zCy.DamageType damageType) { }
+    // RVA: 0x5FB717C Offset: 0x5FB317C VA: 0x5FB717C
+      -> public float kUZ(zCy.DamageType E) { }
+    // RVA: 0x5FB71A0 Offset: 0x5FB31A0 VA: 0x5FB71A0
+      -> public float zpR(zCy.DamageType E) { }
+    // RVA: 0x5FB71C4 Offset: 0x5FB31C4 VA: 0x5FB71C4
+      -> public float MS(zCy.DamageType E) { }
+    // RVA: 0x5FB71E8 Offset: 0x5FB31E8 VA: 0x5FB71E8
+      -> public void zKt() { }
+
+
+***********************************************************************************************
+CLASS / STRUCT: Seat
+***********************************************************************************************
+  public class Seat : zCk // TypeDefIndex: 476
+  {
+
+  --- KEY FIELDS & OFFSETS ---
+    public Transform mountPivot; // 0xA0
+    public Transform dismountPivot; // 0xA8
+    public Transform cameraPivot; // 0xB0
+    public Vector2 xClamp; // 0xB8
+    public Vector2 yClamp; // 0xC0
+    public zCk terminal; // 0xC8
+    public readonly zeg<PlayerManager> CurrentPlayer; // 0xD0
+
+  --- PROPERTIES ---
+    public PlayerManager UOS { get; set; }
+
+  --- KEY METHODS (RVA & SIGNATURES) ---
+    // RVA: 0x5FB9A17 Offset: 0x5FB5A17 VA: 0x5FB9A17
+      -> public PlayerManager keE() { }
+    // RVA: 0x5FB9A4E Offset: 0x5FB5A4E VA: 0x5FB9A4E
+      -> public void kez(PlayerManager E) { }
+    // RVA: 0x5FB9A9E Offset: 0x5FB5A9E VA: 0x5FB9A9E
+      -> public void .ctor() { }
+    // RVA: 0x5FB9B28 Offset: 0x5FB5B28 VA: 0x5FB9B28 Slot: 17
+      -> public override bool Weaved() { }
+
+
+***********************************************************************************************
+CLASS / STRUCT: VehicleManager
+***********************************************************************************************
+  public class VehicleManager : zCk, object // TypeDefIndex: 2781
+  {
+
+  --- KEY FIELDS & OFFSETS ---
+    private const float lmP;
+    private const float lmL;
+    private const int lmR;
+    private const int lmB;
+    private const int lmZ;
+    private float minorCorrectionGrow; // 0xA0
+    private float minorCorrectionDecay; // 0xA4
+    private bool rttBasedCorrection = false; // 0xA8
+    private bool logCorrections = false; // 0xA9
+    private bool logSnaps = false; // 0xAA
+    private bool logInput = false; // 0xAB
+    private float remoteInterpolationDelay; // 0xAC
+    private float inputStaleGrace; // 0xB0
+    private KinematicVehicleMotor kinematicMotor; // 0xB8
+    private KinematicCarController kinematicCar; // 0xC0
+    private KinematicHelicopterController kinematicHeli; // 0xC8
+    private float replaySqrThreshold; // 0xD0
+    private float minorCorrectionSqrThreshold; // 0xD4
+    private float replayAngleThreshold; // 0xD8
+    private float minorCorrectionAngleThreshold; // 0xDC
+    private eb lmf; // 0xE0
+    private bool lmD = false; // 0xE8
+    private uint lmO; // 0xEC
+    private uint lmq; // 0xF0
+    private ZT<VehicleState> lmu; // 0xF8
+    private ZT<VehicleInput> lmg; // 0x100
+    private uint lmH; // 0x108
+    private VehicleInput lmv; // 0x10C
+    private Vector3 lmy; // 0x12C
+    private Quaternion lmF; // 0x138
+    private readonly VehicleSnapshotBuffer<VehicleProxyState> lmI; // 0x148
+    private VehicleState lmd; // 0x150
+    private bool lmw = false; // 0x1C0
+    private VehicleProxyState lmY; // 0x1C8
+    private float[] lmc; // 0x210
+    private float[] lmx; // 0x218
+    private SoundPlayer _warningSound; // 0x220
+    private SoundPlayer _shutdownClickSound; // 0x228
+    private VehicleManager.NoFlyZoneState lmV; // 0x230
+    private AudioSource lNE; // 0x238
+    public Transform cameraPivot; // 0x240
+    public Transform mountPivot; // 0x248
+    private MountTransformRecorder _transformRecorder; // 0x250
+    private float _pushImpulse; // 0x258
+    private const float lNz;
+    private const float lNk;
+    private Rigidbody m_Rigidbody; // 0x260
+    private PieceVitals m_PieceVitals; // 0x268
+    private float exitDistance; // 0x270
+    private LayerMask m_CheckMask; // 0x274
+    private VehicleManager.VehicleType m_VehType; // 0x278
+    private Transform m_ExitPoint; // 0x280
+    private Transform frontExitPoint; // 0x288
+    private Transform backExitPoint; // 0x290
+    private BuildingPiece m_Piece; // 0x298
+    private float m_MinImpactSpeed; // 0x2A0
+    private float m_MaxImpactSpeed; // 0x2A4
+    private float m_MaxImpactDamage; // 0x2A8
+    private float m_VehicleHitPushFactor; // 0x2AC
+    private SoundPlayer m_ImpactSound; // 0x2B0
+    private float lNh; // 0x2B8
+    private bool lNi = false; // 0x2BC
+    private bool <lNa>k__BackingField = false; // 0x2BD
+    private bool <lNt>k__BackingField = false; // 0x2BE
+    private PlayerManager lNp; // 0x2C0
+    private bool lNr = false; // 0x2C8
+    public static iL<VehicleManager> activeVehiclesList; // 0x0
+    public Action<VehicleManager.NoFlyZoneState, VehicleManager.NoFlyZoneState> _Mirror_SyncVarHookDelegate__noFlyZoneState; // 0x2D0
+
+  --- PROPERTIES ---
+    public bool UVa { get; }
+    public bool UVt { get; }
+    public bool UVp { get; }
+    public MountTransformRecorder UVr { get; }
+    private Transform UVW { get; }
+    public VehicleManager.VehicleType UVG { get; }
+    public bool lNa { get; set; }
+    public bool lNt { get; set; }
+    public bool UVJ { get; }
+    public bool UVn { get; }
+    public Transform UVQ { get; }
+    public bool UVM { get; }
+    public bool UVl { get; }
+    public PlayerManager UVS { get; set; }
+    public string UVA { get; }
+    ... and 2 more properties
+
+  --- KEY METHODS (RVA & SIGNATURES) ---
+    // RVA: 0x730DCA5 Offset: 0x7309CA5 VA: 0x730DCA5
+      -> private void iuk(Vector3 E) { }
+    // RVA: 0x730DD6D Offset: 0x7309D6D VA: 0x730DD6D
+      -> public bool iqg() { }
+    // RVA: 0x730DD80 Offset: 0x7309D80 VA: 0x730DD80
+      -> protected void iul(NetworkConnection E, VehicleState z) { }
+    // RVA: 0x730DF1B Offset: 0x7309F1B VA: 0x730DF1B
+      -> public bool iqH() { }
+    // RVA: 0x730DF3E Offset: 0x7309F3E VA: 0x730DF3E
+      -> protected static void koh(NetworkBehaviour E, NetworkReader z, NetworkConnectionToClient k) { }
+    // RVA: 0x730E057 Offset: 0x730A057 VA: 0x730E057
+      -> protected void iuU(Vector3 E) { }
+    // RVA: 0x730E0F4 Offset: 0x730A0F4 VA: 0x730E0F4
+      -> public void iOw(float E) { }
+    // RVA: 0x730E0FD Offset: 0x730A0FD VA: 0x730E0FD
+      -> public void iOY(float E) { }
+    // RVA: 0x730E106 Offset: 0x730A106 VA: 0x730E106
+      -> private void iOc() { }
+    // RVA: 0x730E1A0 Offset: 0x730A1A0 VA: 0x730E1A0
+      -> protected void hRK(Vector3 E) { }
+    // RVA: 0x730E1A5 Offset: 0x730A1A5 VA: 0x730E1A5
+      -> public void Rn(Vector3 E, Vector3 z) { }
+    // RVA: 0x730E264 Offset: 0x730A264 VA: 0x730E264
+      -> private void kBj() { }
+    // RVA: 0x730E726 Offset: 0x730A726 VA: 0x730E726
+      -> protected void iur(VehicleInput E) { }
+    // RVA: 0x730E727 Offset: 0x730A727 VA: 0x730E727 Slot: 16
+      -> public override void OnStopAuthority() { }
+    // RVA: 0x730E80B Offset: 0x730A80B VA: 0x730E80B
+      -> private bool Pm() { }
+    // RVA: 0x730E83B Offset: 0x730A83B VA: 0x730E83B
+      -> protected void iuX(Vector3 E) { }
+    // RVA: 0x730E840 Offset: 0x730A840 VA: 0x730E840
+      -> public void iua([In] VehicleManager.NoFlyZoneState E) { }
+    // RVA: 0x730E893 Offset: 0x730A893 VA: 0x730E893
+      -> public void klJ(float i) { }
+    // RVA: 0x730E8A8 Offset: 0x730A8A8 VA: 0x730E8A8
+      -> private eb IL() { }
+    // RVA: 0x730EA4D Offset: 0x730AA4D VA: 0x730EA4D
+      -> public void iqx(bool E) { }
+    // RVA: 0x730EB97 Offset: 0x730AB97 VA: 0x730EB97
+      -> private void OA(VehicleState E) { }
+    // RVA: 0x730FD39 Offset: 0x730BD39 VA: 0x730FD39
+      -> private void zxh() { }
+    // RVA: 0x730E052 Offset: 0x730A052 VA: 0x730E052
+      -> protected void iuA(bool E) { }
+    // RVA: 0x730FF1F Offset: 0x730BF1F VA: 0x730FF1F
+      -> public void iOF(float E) { }
+    // RVA: 0x730FF34 Offset: 0x730BF34 VA: 0x730FF34
+      -> private void zrs() { }
+    ... total methods: 210
+
+
+***********************************************************************************************
+CLASS / STRUCT: GameNetwork
+***********************************************************************************************
+  public class GameNetwork : NetworkManager // TypeDefIndex: 340
+  {
+
+  --- KEY FIELDS & OFFSETS ---
+    private static GameNetwork.GameModeType <Mzs>k__BackingField; // 0x0
+    private static string <MzJ>k__BackingField; // 0x8
+    private const string Mzn;
+    private const string MzQ;
+    public const int ServerPhysicsHz;
+    public GameControllerBase gameController; // 0xA8
+    private NetworkPrefabsSpawnManager spawnManager; // 0xB0
+    private zCY MzM; // 0xB8
+    private const string Mzl;
+    private Jy MzS; // 0xC0
+    private CancellationTokenSource MzA; // 0xC8
+    private TerrainInfoRegistryConfig Mzo; // 0xD0
+    private JF MzX; // 0xD8
+    private JF MzK; // 0xE0
+    private JF MzU; // 0xE8
+
+  --- PROPERTIES ---
+    public static GameNetwork.GameModeType Mzs { get; set; }
+    public static string MzJ { get; set; }
+    public static string UDD { get; }
+    public List<NetworkPrefabsConfig.PrefabReference> UDO { get; }
+
+  --- KEY METHODS (RVA & SIGNATURES) ---
+    // RVA: 0x5C6598C Offset: 0x5C6198C VA: 0x5C6598C Slot: 37
+      -> public override void OnStartServer() { }
+    // RVA: 0x5C65A50 Offset: 0x5C61A50 VA: 0x5C65A50
+      -> public static void kMw(string E) { }
+    // RVA: 0x5C65B91 Offset: 0x5C61B91 VA: 0x5C65B91 Slot: 9
+      -> public override void LateUpdate() { }
+    // RVA: 0x5C65B93 Offset: 0x5C61B93 VA: 0x5C65B93
+      -> private bool LE(string E) { }
+    // RVA: 0x5C65BA5 Offset: 0x5C61BA5 VA: 0x5C65BA5
+      -> private static GameNetwork.TempSceneHandle klW() { }
+    // RVA: 0x5C65C82 Offset: 0x5C61C82 VA: 0x5C65C82
+      -> public static string kMY() { }
+    // RVA: 0x5C65CC7 Offset: 0x5C61CC7 VA: 0x5C65CC7 Slot: 33
+      -> public override void OnClientNotReady() { }
+    // RVA: 0x5C65CC8 Offset: 0x5C61CC8 VA: 0x5C65CC8
+      -> public void kXq(zCY E) { }
+    // RVA: 0x5C65CDB Offset: 0x5C61CDB VA: 0x5C65CDB
+      -> private static void kMd(GameNetwork.GameModeType E) { }
+    // RVA: 0x5C65D29 Offset: 0x5C61D29 VA: 0x5C65D29
+      -> private bool kls(string E) { }
+    // RVA: 0x5C65D3B Offset: 0x5C61D3B VA: 0x5C65D3B
+      -> private bool hMc(string E) { }
+    // RVA: 0x5C65D85 Offset: 0x5C61D85 VA: 0x5C65D85
+      -> private UniTask kll(bool E, CancellationToken z) { }
+    // RVA: 0x5C65D8C Offset: 0x5C61D8C VA: 0x5C65D8C Slot: 23
+      -> public override void OnServerReady(NetworkConnectionToClient conn) { }
+    // RVA: 0x5C65E2C Offset: 0x5C61E2C VA: 0x5C65E2C
+      -> private void hGA() { }
+    // RVA: 0x5C65E7D Offset: 0x5C61E7D VA: 0x5C65E7D
+      -> private static void klh(NetworkConnectionToClient E) { }
+    // RVA: 0x5C660DD Offset: 0x5C620DD VA: 0x5C660DD Slot: 17
+      -> protected override void CancelSceneChange() { }
+    // RVA: 0x5C660F1 Offset: 0x5C620F1 VA: 0x5C660F1 Slot: 16
+      -> protected override UniTask ClientChangeSceneAsync(string newSceneName, SceneOperation sceneOperation = 0, bool customHandling = false) { }
+    // RVA: 0x5C661CF Offset: 0x5C621CF VA: 0x5C661CF Slot: 31
+      -> public override void OnClientError(TransportError error, string reason) { }
+    // RVA: 0x5C66305 Offset: 0x5C62305 VA: 0x5C66305
+      -> public void ziB(GameControllerBase E) { }
+    // RVA: 0x5C66318 Offset: 0x5C62318 VA: 0x5C66318
+      -> private static GameNetwork.TempSceneHandle zvR() { }
+    // RVA: 0x5C663F5 Offset: 0x5C623F5 VA: 0x5C663F5 Slot: 19
+      -> protected override UniTask OnObjectsDestroyedAtDisconnect(int batchSize, CancellationToken cancellation) { }
+    // RVA: 0x5C664BC Offset: 0x5C624BC VA: 0x5C664BC Slot: 40
+      -> public override void OnStopClient() { }
+    // RVA: 0x5C66626 Offset: 0x5C62626 VA: 0x5C66626 Slot: 39
+      -> public override void OnStopServer() { }
+    // RVA: 0x5C66663 Offset: 0x5C62663 VA: 0x5C66663 Slot: 35
+      -> public override void OnClientSceneChanged() { }
+    // RVA: 0x5C6666A Offset: 0x5C6266A VA: 0x5C6666A
+      -> public void .ctor() { }
+    ... total methods: 76
+
+
+===============================================================================================
+SECTION 4: QUICK-LOOKUP FIELD OFFSET TABLE
+===============================================================================================
+
+CLASS                      | FIELD NAME                       | OFFSET     | TYPE
+-----------------------------------------------------------------------------------------------
+PlayerManager              | worldCameraRoot                  | 0x68       | Transform
+PlayerManager              | mouseLook                        | 0x70       | MouseLook
+PlayerManager              | raycastManager                   | 0x88       | RaycastManager
+PlayerManager              | fpManager                        | 0x90       | FPManager
+PlayerManager              | inventory                        | 0x98       | PlayerInventory
+PlayerManager              | playerMap                        | 0xA0       | PlayerMap
+PlayerManager              | vitals                           | 0xC8       | PlayerVitals
+PlayerManager              | equipment                        | 0xE8       | zbZ
+PlayerManager              | weaponReference                  | 0xF0       | InterfaceReference<MI>
+PlayerManager              | team                             | 0x120      | zbI
+PlayerManager              | nicklabel                        | 0x130      | iV
+PlayerManager              | characterModel                   | 0x150      | GameObject
+PlayerManager              | aimAssistConfig                  | 0x180      | AimAssistConfig
+PlayerManager              | animator                         | 0x190      | Animator
+PlayerManager              | weapons                          | 0x198      | FPWeaponBase[]
+PlayerManager              | lookAngle                        | 0x1A8      | float
+PlayerManager              | combat                           | 0x1B0      | hB
+PlayerManager              | isInAir                          | 0x1B8      | bool
+PlayerManager              | isOnPlayer                       | 0x1B9      | bool
+PlayerManager              | violationLevel                   | 0x1BC      | float (Anti-cheat)
+PlayerManager              | speedhackPauseTime               | 0x1C0      | float (Anti-cheat)
+PlayerManager              | speedhackDistance                | 0x1C4      | float (Anti-cheat)
+PlayerManager              | lastTickPosition                 | 0x1C8      | Vector3
+PlayerManager              | lastSavedPosition                | 0x1D4      | Vector3
+PlayerManager              | lastDeathPosition                | 0x1E0      | Vector3
+PlayerManager              | flyhackPauseTime                 | 0x1F0      | float (Anti-cheat)
+PlayerManager              | flyhackDistanceVertical          | 0x1F4      | float (Anti-cheat)
+PlayerManager              | flyhackInAirSeconds              | 0x1F8      | float (Anti-cheat)
+PlayerManager              | flyhackDistanceHorizontal        | 0x1FC      | float (Anti-cheat)
+PlayerManager              | lastViolationType                | 0x200      | HackType enum (Anti-cheat)
+PlayerManager              | playerFlags                      | 0x250      | PlayerFlags enum
+PlayerManager              | isImmortal                       | 0x2B1      | bool (God mode / Immortal)
+PlayerManager              | userID                           | 0x278      | string
+PlayerManager              | teamName                         | 0x280      | string
+PlayerManager              | observedPlayer                   | 0x318      | PlayerManager (Spectator target)
+CharacterMovement          | _maxLateralSpeed                 | 0x20       | float (Movement speed)
+CharacterMovement          | _maxRiseSpeed                    | 0x24       | float (Jump / ladder speed)
+CharacterMovement          | _maxFallSpeed                    | 0x28       | float
+CharacterMovement          | _useGravity                      | 0x2C       | bool (Gravity toggle)
+CharacterMovement          | _gravity                         | 0x30       | Vector3
+CharacterMovement          | _slideOnSteepSlope               | 0x3C       | bool
+CharacterMovement          | _slopeLimit                      | 0x40       | float (Climb angle limit)
+CharacterMovement          | _slideGravityMultiplier          | 0x44       | float
+CharacterMovement          | _snapToGround                    | 0x48       | bool
+CharacterMovement          | _snapStrength                    | 0x4C       | float
+CharacterMovement          | Mox (Rigidbody)                  | 0xB8       | Rigidbody
+MouseLook                  | XSensitivity                     | 0x10       | float
+MouseLook                  | YSensitivity                     | 0x14       | float
+MouseLook                  | clampVerticalRotation            | 0x18       | bool
+MouseLook                  | MinimumX                         | 0x1C       | float
+MouseLook                  | MaximumX                         | 0x20       | float
+MouseLook                  | smooth                           | 0x24       | bool
+MouseLook                  | smoothTime                       | 0x28       | float
+MouseLook                  | lockCursor                       | 0x2C       | bool
+MouseLook                  | m_CharacterTargetRot             | 0x30       | Quaternion
+MouseLook                  | m_CameraTargetRot                | 0x40       | Quaternion
+HitscanWeaponConfig        | damage                           | 0x18       | float (Base Weapon Damage)
+HitscanWeaponConfig        | MaxDamageOnDistance              | 0x1C       | Vector2
+HitscanWeaponConfig        | MinDamageOnDistance              | 0x24       | Vector2
+HitscanWeaponConfig        | MaxDistance                      | 0x2C       | float (Max firing range)
+HitscanWeaponConfig        | BulletSpeed                      | 0x30       | float (Muzzle velocity)
+HitscanWeaponConfig        | fireRate                         | 0x34       | float (Rate of fire)
+HitscanWeaponConfig        | projectilesPerShot               | 0x38       | int (Pellets / bullets per shot)
+HitscanWeaponConfig        | BaseDispersion                   | 0x3C       | float (Base weapon spread)
+HitscanWeaponConfig        | mobility                         | 0x40       | float
+HitscanWeaponConfig        | HasFullReload                    | 0x44       | bool
+HitscanWeaponConfig        | HasLoopReload                    | 0x45       | bool
+HitscanWeaponConfig        | FullReloadPeriod                 | 0x48       | float (Reload duration)
+HitscanWeaponConfig        | LoopReloadPeriod                 | 0x4C       | float
+HitscanWeaponConfig        | needPrepareEveryShot             | 0x50       | bool
+HitscanWeaponConfig        | suppressed                       | 0x52       | bool (Silenced)
+HitscanWeaponConfig        | dispersionConfig                 | 0x60       | DispersionConfig
+HitscanWeaponConfig        | recoilConfig                     | 0x68       | RecoilConfig
+RecoilConfig               | MinRecoil                        | 0x18       | Vector2
+RecoilConfig               | MaxRecoil                        | 0x20       | Vector2
+RecoilConfig               | MinSideDelta                     | 0x28       | float (Horizontal kick min)
+RecoilConfig               | MaxSideDelta                     | 0x2C       | float (Horizontal kick max)
+RecoilConfig               | RecoilAimMultiplier              | 0x30       | float (Recoil reduction in ADS)
+RecoilConfig               | RecoilTime                       | 0x34       | float
+RecoilConfig               | RecoilDecreaseSpeedFire          | 0x38       | float (Recovery speed firing)
+RecoilConfig               | RecoilDecreaseSpeedIdle          | 0x3C       | float (Recovery speed idle)
+RecoilConfig               | RecoilApplySpeed                 | 0x40       | float
+DispersionConfig           | minFireDispersion                | 0x18       | float
+DispersionConfig           | maxFireDispersion                | 0x1C       | float
+DispersionConfig           | minDispersion                    | 0x20       | float
+DispersionConfig           | maxDispersion                    | 0x24       | float
+DispersionConfig           | dispersionIncreasePerShot        | 0x28       | float
+DispersionConfig           | dispersionDecreaseRate           | 0x2C       | float
+DispersionConfig           | MoveScale                        | 0x30       | float (Spread multiplier moving)
+DispersionConfig           | BaseDispersionAimFactor          | 0x34       | float (Spread factor in ADS)
+WeaponBase                 | m_AudioSource                    | 0x20       | AudioSource
+WeaponBase                 | m_ShotConfig                     | 0x38       | MultiLayerShotConfig
+WeaponBase                 | bulletTracerPrefab               | 0x48       | BulletProjectile
+WeaponBase                 | spawnTracer                      | 0x50       | bool
+WeaponBase                 | Animator                         | 0x58       | Animator
+WeaponBase                 | WeaponModsHandler                | 0x78       | WeaponModsHandler
+WeaponBase                 | RightHandPivot                   | 0x88       | Transform
+WeaponBase                 | LeftHandPivot                    | 0x90       | Transform
+WeaponBase                 | ShellSpawnPoint                  | 0x98       | Transform
+WeaponBase                 | MuzzlePoint                      | 0xA0       | Transform
+WeaponBase                 | defaultADSPoint                  | 0xB0       | Transform
+PlayerWeapon               | animator                         | 0xD8       | Animator
+PlayerWeapon               | playerWeaponViewRef              | 0xE0       | fG
+PlayerWeapon               | playerFPWeaponView               | 0xE8       | PlayerFPWeaponView
+PlayerWeapon               | shotMask                         | 0xF0       | LayerMask
+PlayerWeapon               | fPManager                        | 0xF8       | FPManager
+PlayerWeapon               | player                           | 0x138      | PlayerManager
+PlayerVitals               | Player                           | 0x100      | PlayerManager
+PlayerVitals               | startHealthMin                   | 0x110      | float
+PlayerVitals               | startHealthMax                   | 0x114      | float
+PlayerVitals               | m_HealthRegeneration             | 0x118      | StatRegenData
+PlayerVitals               | m_ThirstDepletion                | 0x128      | StatDepleter
+PlayerVitals               | m_HungerDepletion                | 0x130      | StatDepleter
+PlayerVitals               | m_OxygenDepletion                | 0x138      | StatDepleter
+PlayerVitals               | m_OxygenRegenRate                | 0x140      | float
+PlayerVitals               | m_Temperature                    | 0x144      | float
+PlayerVitals               | m_RadiationLevel                 | 0x148      | float
+PlayerVitals               | m_RadiationPoison                | 0x14C      | float
+PlayerVitals               | m_SleepRestoresHealth            | 0x150      | bool
+GenericVitals              | m_MaxHealth                      | 0x88       | float
+GenericVitals              | m_Protection                     | 0x90       | ProtectionValues
+GenericVitals              | m_PveDamage                      | 0x98       | bool
+GenericVitals              | m_Hitboxes                       | 0xA8       | HitBox[]
+GenericVitals              | m_DamageMultipliers              | 0xB0       | float[]
+EntityVitals               | m_MinFallSpeed                   | 0xC0       | float
+EntityVitals               | m_MaxFallSpeed                   | 0xC4       | float
+EntityVitals               | m_TimeBetweenScreams             | 0xD0       | float
+zeT                        | DisplayName                      | 0x88       | string
+zeT                        | KillExp                          | 0x90       | int
+zeT                        | Health                           | 0x98       | zeu<float, ReasonedValueReasonHealthEvent>
+zeT                        | IsGrounded                       | 0xA8       | zeg<bool>
+zeT                        | Velocity                         | 0xB0       | zeg<Vector3>
+zeT                        | Death                            | 0xC0       | zef
+zeT                        | Respawn                          | 0xC8       | zef
+HelicopterController       | helicopterSound                  | 0x68       | AudioClip
+HelicopterController       | HelicopterModel                  | 0x70       | Rigidbody
+HelicopterController       | MaxEngineForce                   | 0x88       | float
+HelicopterController       | TurnForce                        | 0x8C       | float
+HelicopterController       | ForwardForce                     | 0x90       | float
+HelicopterController       | ForwardTiltForce                 | 0x94       | float
+HelicopterController       | TurnTiltForce                    | 0x98       | float
+HelicopterController       | EffectiveHeight                  | 0x9C       | float
+HelicopterController       | IsOnGround                       | 0xE4       | bool
+HelicopterController       | volume                           | 0xE8       | float
+HelicopterController       | KinematicControlled              | 0x148      | bool
+AutoTurret                 | damage                           | 0x180      | float
+AutoTurretBase             | fireRate                         | 0x110      | float
+DisconnectedSleeper        | Health                           | 0x124      | float
+BuildingGrade              | damageProtecton                  | 0x28       | ProtectionValues
+
+===============================================================================================
+END OF REFERENCE GUIDE
+===============================================================================================
